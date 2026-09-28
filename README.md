@@ -4,6 +4,10 @@ First and for most this project was made to test the capabilities of local and o
 Recompilation of Fable 2 (Xbox 360, title ID 4D5307F1) using the [ReXGlue SDK](https://github.com/rexglue/rexglue-sdk) v0.10.0. Guest PPC code is statically recompiled to C++ at build time by `rexglue codegen`, driven by `fable_2_manifest.toml`.
 
 # Current and planned features
+
+Original GOTY USA/Europe and German GOTY dumps are supported by the default
+`goty-compatible` build profile. Other XEX revisions remain rejected. See
+[German GOTY validation and known limits](docs/GERMAN_GOTY_SUPPORT.md).
 [x] Can be used to beat the game\
 [x] Guild chest fully unlocked\
 [x] Uncapped framerate / increased framerate\
@@ -22,6 +26,19 @@ Recompilation of Fable 2 (Xbox 360, title ID 4D5307F1) using the [ReXGlue SDK](h
 [ ] Custom commands to aid in debugging\
 [ ] Improved Graphics rendering
 [ ] Custom menu(s) / modifying menus for extra functionality (like closing the game)
+
+## Windows launcher
+
+The optional WPF launcher detects the original game edition and configures
+output resolution, internal render scale, anisotropic filtering, FXAA, VSync,
+and window/fullscreen mode. It saves settings to `fable_2.toml`, preserves other
+settings and keeps a one-time backup. Game files can live in a separate folder;
+the launcher passes that location through `--game_data_root`.
+
+Build with the .NET 8 SDK using `build.cmd launcher`, or
+`build.cmd launcher-self-contained` to bundle the desktop runtime. Place
+`out\launcher\Fable2Launcher.exe` beside `fable_2.exe` and its generated
+`fable2_build.json`. See [launcher details](launcher/README.md).
 
 
 

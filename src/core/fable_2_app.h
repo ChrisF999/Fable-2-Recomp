@@ -290,6 +290,19 @@ class Fable2App : public rex::ReXApp {
                   cvar);
     };
     const fable2::config::Values& cfg = fable2::config::Get();
+#ifdef FABLE2_DEFAULT_LANGUAGE
+    // XLanguage profile default; config, environment and CLI still win.
+#ifdef FABLE2_GOTY_COMPATIBLE
+    std::string profile_hash;
+    if (fable2::xexverify::Sha256File(game_data_root() / "default.xex", profile_hash) &&
+        fable2::xexverify::IsAcceptedHash(profile_hash)) {
+      seed_cvar("user_language", std::to_string(fable2::xexverify::DefaultLanguage(profile_hash)));
+      REXSYS_INFO("[build-profile] detected {} GOTY", profile_hash == fable2::xexverify::kGermanGotySha256 ? "German" : "USA/Europe");
+    }
+#else
+    seed_cvar("user_language", std::to_string(FABLE2_DEFAULT_LANGUAGE));
+#endif
+#endif
     seed_cvar("keyboard_gamepad_map", cfg.keyboard_gamepad_map);
     seed_cvar("mouse_look", cfg.mouse_look ? "true" : "false");
     seed_cvar("mouse_look_scale", std::to_string(cfg.mouse_look_scale));
@@ -365,7 +378,7 @@ class Fable2App : public rex::ReXApp {
     const std::filesystem::path marker = cache / "default.xex.sha256";
 
     REXSYS_INFO("[xex-verify] {}", xex.string());
-    REXSYS_INFO("[xex-verify] expected SHA-256: {}", fable2::xexverify::kExpectedSha256);
+    REXSYS_INFO("[xex-verify] accepted SHA-256: {}", fable2::xexverify::kExpectedHashes);
     const auto r = fable2::xexverify::Check(xex, marker);
     switch (r.result) {
       case fable2::xexverify::Result::VerifiedCached:
@@ -381,21 +394,20 @@ class Fable2App : public rex::ReXApp {
       case fable2::xexverify::Result::Mismatch: {
         REXSYS_ERROR("[xex-verify] actual SHA-256: {}", r.actual_hash);
         REXSYS_ERROR("[xex-verify] expected SHA-256: {} (MISMATCH)",
-                     fable2::xexverify::kExpectedSha256);
+                     fable2::xexverify::kExpectedHashes);
         const std::string msg = std::format(
             "default.xex hash mismatch\n\n"
-            "This build was recompiled against a specific default.xex, but\n"
-            "the file found here has a different SHA-256 hash, so the game\n"
-            "may not run correctly.\n\n"
+            "This build only supports verified original GOTY executables.\n"
+            "The XEX in the selected game folder is not supported.\n\n"
             "File:     {}\n"
             "Actual:   {}\n"
             "Expected: {}\n\n"
             "You can check the hash yourself in a Windows terminal:\n"
             "  certutil -hashfile \"{}\" SHA256\n"
             "(PowerShell: Get-FileHash \"{}\" -Algorithm SHA256)\n\n"
-            "If you have the correct default.xex, replace the one above and\n"
-            "start the game again.",
-            xex.string(), r.actual_hash, fable2::xexverify::kExpectedSha256,
+            "Select a complete matching GOTY dump and start again.\n"
+            "Do not mix an XEX from another version with these game files.",
+            xex.string(), r.actual_hash, fable2::xexverify::kExpectedHashes,
             xex.string(), xex.string());
         REXSYS_ERROR("[xex-verify] {}", msg);
         rex::ShowSimpleMessageBox(rex::SimpleMessageBoxType::Error, msg);
@@ -403,9 +415,17 @@ class Fable2App : public rex::ReXApp {
       }
       case fable2::xexverify::Result::ReadFailed:
       default:
-        REXSYS_WARN("[xex-verify] could not hash {} (read error); "
-                   "skipping the integrity check", xex.string());
-        break;
+        REXSYS_ERROR("[xex-verify] could not hash {}; refusing to load unverified content", xex.string());
+        rex::ShowSimpleMessageBox(rex::SimpleMessageBoxType::Error,
+            "default.xex could not be read. Check the selected game folder and file permissions.");
+        std::exit(1);
+    }
+    const auto root = game_data_root();
+    if (!fable2::xexverify::HasCompatibleContent(root, r.actual_hash)) {
+      REXSYS_ERROR("[build-profile] incomplete or mixed GOTY content: {}", root.string());
+      rex::ShowSimpleMessageBox(rex::SimpleMessageBoxType::Error,
+          "Incomplete or mixed GOTY content. Select an original matching GOTY dump; do not replace its XEX with another version.");
+      std::exit(1);
     }
   }
 

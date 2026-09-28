@@ -22,6 +22,15 @@ rem                                out\build\win-amd64-release-profiling
 setlocal
 cd /d "%~dp0"
 
+rem The launcher only needs the .NET SDK, not the much larger C++ toolchain.
+if /i "%~1"=="launcher" (
+    call "%~dp0launcher\build-launcher.cmd" || exit /b 1
+    exit /b 0
+)
+if /i "%~1"=="launcher-self-contained" (
+    call "%~dp0launcher\build-launcher.cmd" self-contained || exit /b 1
+    exit /b 0
+)
 rem LLVM: prefer clang++ already on PATH, else the default install location
 where clang++ >nul 2>nul
 if errorlevel 1 (

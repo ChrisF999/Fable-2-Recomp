@@ -5,7 +5,29 @@
 cmake_minimum_required(VERSION 3.25)
 project(fable_2 LANGUAGES CXX)
 
+set(FABLE2_BUILD_PROFILE "goty-compatible" CACHE STRING "Verified guest XEX profile")
+set_property(CACHE FABLE2_BUILD_PROFILE PROPERTY STRINGS goty-compatible goty-us-eu goty-german)
+if(FABLE2_BUILD_PROFILE STREQUAL "goty-compatible")
+    # Both original GOTY XEXs produce byte-identical recompiled sources.
+    set(FABLE2_EXPECTED_XEX_SHA256 "88c4ef2e18e65409444d1b068eff921d1f7e180a5ae64edc64ba6b0872372662")
+    set(FABLE2_DEFAULT_LANGUAGE 1)
+elseif(FABLE2_BUILD_PROFILE STREQUAL "goty-us-eu")
+    set(FABLE2_EXPECTED_XEX_SHA256 "88c4ef2e18e65409444d1b068eff921d1f7e180a5ae64edc64ba6b0872372662")
+    set(FABLE2_DEFAULT_LANGUAGE 1)
+elseif(FABLE2_BUILD_PROFILE STREQUAL "goty-german")
+    set(FABLE2_EXPECTED_XEX_SHA256 "3f36e7870a06e04b3702760e93c61b1c7fded321b94021da6bfa120b424e6eb4")
+    set(FABLE2_DEFAULT_LANGUAGE 3)
+else()
+    message(FATAL_ERROR "Unverified FABLE2_BUILD_PROFILE: ${FABLE2_BUILD_PROFILE}")
+endif()
+
 set(CMAKE_CXX_STANDARD 23)
+if(FABLE2_BUILD_PROFILE STREQUAL "goty-compatible")
+    set(FABLE2_SUPPORTED_PROFILES "[\"goty-us-eu\", \"goty-german\"]")
+else()
+    set(FABLE2_SUPPORTED_PROFILES "[\"${FABLE2_BUILD_PROFILE}\"]")
+endif()
+configure_file(config/fable2_build.json.in ${CMAKE_CURRENT_BINARY_DIR}/fable2_build.json @ONLY)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Needed by the recomp-level patch step below (tools/apply_recomp_patches.py).
@@ -50,12 +72,21 @@ endif()
 # per-configuration variant: rexgpu-xenosd.dll for Debug, rexgpu-xenos.dll
 # for Release). Without it the game runs with no GPU emulation.
 rexglue_setup_target(fable_2 GPU_PLUGINS xenos)
+add_custom_command(TARGET fable_2 POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_BINARY_DIR}/fable2_build.json"
+        "$<TARGET_FILE_DIR:fable_2>/fable2_build.json"
+    COMMENT "Staging supported game profiles for the launcher"
+    VERBATIM)
 
 # The app's probe/diagnostic headers (src/diagnostics/*.h) use the standard CRT
 # functions (fopen, getenv, strcat, strncat, ...), which the MSVC/UCRT headers
 # mark deprecated when compiled with clang (-Wdeprecated-declarations noise).
 # These are safe in this codebase; silence the deprecation on Windows.
 target_compile_definitions(fable_2 PRIVATE
+    FABLE2_EXPECTED_XEX_SHA256="${FABLE2_EXPECTED_XEX_SHA256}"
+    FABLE2_DEFAULT_LANGUAGE=${FABLE2_DEFAULT_LANGUAGE}
+    $<$<STREQUAL:${FABLE2_BUILD_PROFILE},goty-compatible>:FABLE2_GOTY_COMPATIBLE>
     $<$<PLATFORM_ID:Windows>:_CRT_SECURE_NO_WARNINGS>)
 
 # Remote control server (AI input channel) is a debug-only tool: it opens a

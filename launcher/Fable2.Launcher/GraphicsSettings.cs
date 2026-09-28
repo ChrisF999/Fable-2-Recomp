@@ -1,0 +1,42 @@
+using System.Globalization;
+
+namespace Fable2Launcher;
+
+public static class GraphicsSettings
+{
+    public static readonly string[] ManagedKeys =
+    [
+        "resolution", "window_width", "window_height", "resolution_scale",
+        "anisotropic_override", "swap_post_effect", "vsync", "fullscreen", "fullscreen_exclusive"
+    ];
+
+    public static Dictionary<string, string> Create(string resolution, string scale,
+        string anisotropic, string antiAliasing, string displayMode, bool vsync)
+    {
+        (int width, int height) = resolution switch
+        {
+            "720p" => (1280, 720), "1080p" => (1920, 1080),
+            "1440p" => (2560, 1440), "4k" => (3840, 2160),
+            _ => throw new ArgumentException("Unknown output resolution")
+        };
+        if (!new[] { "1", "2", "3", "4" }.Contains(scale) ||
+            !new[] { "-1", "1", "2", "3", "4", "5" }.Contains(anisotropic) ||
+            !new[] { "none", "fxaa", "fxaa_extreme" }.Contains(antiAliasing) ||
+            !new[] { "windowed", "borderless", "exclusive" }.Contains(displayMode))
+            throw new ArgumentException("Unsupported graphics setting");
+
+        return new(StringComparer.OrdinalIgnoreCase)
+        {
+            // Presentation size is independent from the guest's original 720p mode.
+            ["resolution"] = "\"\"",
+            ["window_width"] = width.ToString(CultureInfo.InvariantCulture),
+            ["window_height"] = height.ToString(CultureInfo.InvariantCulture),
+            ["resolution_scale"] = scale,
+            ["anisotropic_override"] = anisotropic,
+            ["swap_post_effect"] = $"\"{antiAliasing}\"",
+            ["vsync"] = vsync.ToString().ToLowerInvariant(),
+            ["fullscreen"] = (displayMode != "windowed").ToString().ToLowerInvariant(),
+            ["fullscreen_exclusive"] = (displayMode == "exclusive").ToString().ToLowerInvariant()
+        };
+    }
+}

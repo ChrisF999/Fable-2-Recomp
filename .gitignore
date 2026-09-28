@@ -3,6 +3,7 @@ default.xex
 /data/
 /nxeart/
 /$SystemUpdate/
+/Gamefiles/
 
 # --- Build artifacts --------------------------------------------------------
 out
