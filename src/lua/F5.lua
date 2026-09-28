@@ -33,7 +33,7 @@
 
 local F5_MENU_ITEMS = {
   { name = "Get Player Position", path = "scripts/recomp/getPlayerPos.lua" },
-  { name = "Get Player Position", path = "scripts/recomp/getPlayerPos.lua" },
+  { name = "Modify Money", path = "scripts/recomp/modifyMoney.lua" },
 }
 
 -- Run a script from the game VFS. The game's custom loadfile resolves paths
@@ -47,10 +47,13 @@ local function run_script(path)
     pcall(GUI.DisplayMessageBox, "F5: could not load " .. path .. "\n" .. why)
     return
   end
-  local ok, runerr = pcall(chunk)
-  if not ok then
-    pcall(GUI.DisplayMessageBox, "F5: error running " .. path .. "\n" .. tostring(runerr))
-  end
+  -- Run the chunk directly, NOT inside pcall(): a script may coroutine.yield()
+  -- to run across frames (e.g. modifyMoney.lua's sub-menu), and a yield cannot
+  -- cross a C-call boundary — pcall is one. Errors in the chunk propagate to
+  -- the update() coroutine (the GeneralScriptManager then logs + terminates it);
+  -- the scripts guard their game API calls with pcall individually, so a normal
+  -- script run should not raise.
+  chunk()
 end
 
 -- Shared state that persists across F5 presses (the game uses one Lua state,
@@ -185,7 +188,8 @@ if not st.registered then
         -- on any internal error after showing an error box.
         local choice = open_menu() or 0
         if choice >= 1 and choice <= #F5_MENU_ITEMS then
-          pcall(run_script, F5_MENU_ITEMS[choice].path) -- no yields inside; safe
+          run_script(F5_MENU_ITEMS[choice].path) -- may yield (sub-menus); run
+                                                 -- directly so yields stay in this coroutine
         end
         -- Re-anchor AFTER the whole sequence: the menu selection itself
         -- advanced the ID, and the script may have opened its own message box
