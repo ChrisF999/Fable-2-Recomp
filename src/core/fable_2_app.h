@@ -27,6 +27,7 @@
 #endif
 
 #include "alloc_watch.h"
+#include "dir_manifest_heal.h"
 #include "fable2_config.h"
 #include "fable2_patches.h"
 // #include "fable2_deadbeef_overlay.h"
@@ -348,6 +349,13 @@ class Fable2App : public rex::ReXApp {
   // cache/default.xex.sha256 marker; a mismatch aborts with a dialog that
   // shows how to check the hash yourself.
   void OnLoadXexImage(std::string& xex_image) override {
+    // Self-heal the guest VFS index before the title runs: the game indexes
+    // all of data/ from data/dir.manifest, and a missing entry means the
+    // guest sees null (crashes at startup). Content migrated with an
+    // mtime-respecting copy can leave a stale/truncated manifest in place;
+    // this appends any file that is on disk but unlisted. Idempotent.
+    fable2::manifestheal::EnsureComplete(game_data_root());
+
     // Resolve the host path the same way the SDK does (game:\ / d:\ ->
     // game_data_root). The SDK's path may use either slash direction
     // (e.g. "game:\\default.xex" or "game:/default.xex"), so strip the
