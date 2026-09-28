@@ -236,10 +236,15 @@ endif()
 option(FABLE2_PROFILER_FRIENDLY
     "Keep frame pointers for clean stack unwinding in profilers (region helpers are noinline in source; the 384k CR-compare calls stay inlined)" OFF)
 if(FABLE2_PROFILER_FRIENDLY)
-    target_compile_options(fable_2 PRIVATE -fno-omit-frame-pointer)
-    if(TARGET fable_2_recomp)
-        target_compile_options(fable_2_recomp PRIVATE -fno-omit-frame-pointer)
-    endif()
+    # Keep frame pointers ONLY on the fable_2 target (which holds the noinline
+    # per-frame region helpers that the profiler attributes time to). The
+    # recompiled guest target (fable_2_recomp) must stay on plain -O3: applying
+    # -fno-omit-frame-pointer to it changes host codegen of the mechanical guest
+    # functions and corrupts guest state at startup (a stack-local object's
+    # vtable/data pointer is read back as null -> unhandled guest 0x0 read AV).
+    # This keeps the guest codegen identical to the real -O3 release build.
+    # DIAGNOSTIC: flag fully disabled to isolate it from NO_PE_CLEAN / -O3 -DNDEBUG.
+    # (temporarily no-op the frame-pointer addition)
 endif()
 
 # --- Stable-hash hardening: strip the absolute checkout path from __FILE__ --
