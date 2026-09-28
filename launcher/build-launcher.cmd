@@ -2,7 +2,7 @@
 setlocal
 set "ROOT=%~dp0.."
 set "PROJECT=%~dp0Fable2.Launcher\Fable2.Launcher.csproj"
-set "OUTPUT=%ROOT%\out\launcher"
+set "OUTPUT=%ROOT%\out\tests\launcher-build"
 
 if /i "%~1"=="self-contained" (
   dotnet publish "%PROJECT%" -c Release -r win-x64 --self-contained true ^

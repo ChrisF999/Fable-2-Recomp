@@ -34,6 +34,17 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
 include(generated/rexglue.cmake)
+set(FABLE2_CODEGEN_TOOL "" CACHE FILEPATH "Standalone compatible ReXGlue codegen tool")
+if(FABLE2_CODEGEN_TOOL)
+    if(NOT EXISTS "${FABLE2_CODEGEN_TOOL}")
+        message(FATAL_ERROR "FABLE2_CODEGEN_TOOL does not exist")
+    endif()
+    # The official tool must keep its own runtime. Host headers, integration
+    # sources and libraries come from the matched source-built SDK instead.
+    set_target_properties(rex::rexglue PROPERTIES
+        IMPORTED_LOCATION "${FABLE2_CODEGEN_TOOL}"
+        IMPORTED_LOCATION_RELEASE "${FABLE2_CODEGEN_TOOL}")
+endif()
 
 # Sources
 # Strong-symbol override copies of recompiled guest functions (perf-optimized;
@@ -300,7 +311,17 @@ endif()
 # no resource compiler is configured (e.g. a bare MSVC-only preset).
 if(WIN32 AND CMAKE_RC_COMPILER AND TARGET fable_2)
     target_sources(fable_2 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tools/repro/fable2_version.rc)
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/app_icon.rc"
+         "1 ICON \"${CMAKE_CURRENT_SOURCE_DIR}/assets/app-icon.ico\"\n")
+    target_sources(fable_2 PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/app_icon.rc")
 endif()
+add_custom_command(TARGET fable_2 POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_SOURCE_DIR}/assets/app-icon.png"
+            "$<TARGET_FILE_DIR:fable_2>/app-icon.png"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/StartWithoutAudio.cmd"
+            "$<TARGET_FILE_DIR:fable_2>/StartWithoutAudio.cmd")
 
 # --- Vulkan renderer: Stage 2 (source-built plugin, swappable at launch) --
 # The prebuilt plugin above (GPU_PLUGINS xenos) is D3D12-only. The Vulkan
@@ -326,7 +347,8 @@ if(NOT DEFINED REXGLUE_SDK_SOURCE)
 endif()
 set(FABLE2_SDK_SRC "${REXGLUE_SDK_SOURCE}")
 set(FABLE2_SDK_ROOT "${REXGLUE_SDK_ROOT}")
-if(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Release")
+# Never replace a matched SDK with DLLs left over from an older Vulkan build.
+if(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT FABLE2_CODEGEN_TOOL)
     # The SDK stages its outputs under its own out/win-amd64/Release/ tree
     # (REXGLUE_ROOT based). We need both the source plugin AND the source
     # (both-backends) runtime: the prebuilt 0.10.0 runtime is D3D12-only and is

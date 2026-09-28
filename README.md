@@ -20,7 +20,7 @@ Original GOTY USA/Europe and German GOTY dumps are supported by the default
   - [ ] Automatic swapping between text
 
 [ ] Increased performance / framerate\
-[ ] Hero / Dog Texture bug fix\
+[x] Hero / Dog Texture bug fix (upstream renderer, verified on German GOTY)\
 [ ] Vulkan support\
 [ ] Linux Builds\
 [ ] Custom commands to aid in debugging\
@@ -31,14 +31,20 @@ Original GOTY USA/Europe and German GOTY dumps are supported by the default
 
 The optional WPF launcher detects the original game edition and configures
 output resolution, internal render scale, anisotropic filtering, FXAA, VSync,
-and window/fullscreen mode. It saves settings to `fable_2.toml`, preserves other
-settings and keeps a one-time backup. Game files can live in a separate folder;
-the launcher passes that location through `--game_data_root`.
+window/fullscreen mode and a 30/60/unlimited FPS limit. It keeps its preferences
+in `launcher-settings.toml` and writes `fable_2.toml`, preserving other settings
+and a one-time backup. Preferences survive the runtime rewriting its config.
+The game-folder selection starts empty and remembers only the user's saved
+location. Game files can live separately; the launcher uses `--game_data_root`.
+Both applications are named Fable 2 Recompiled and use new project-owned icons.
 
 Build with the .NET 8 SDK using `build.cmd launcher`, or
 `build.cmd launcher-self-contained` to bundle the desktop runtime. Place
-`out\launcher\Fable2Launcher.exe` beside `fable_2.exe` and its generated
+`out\tests\launcher-build\Fable2Launcher.exe` beside `fable_2.exe` and its generated
 `fable2_build.json`. See [launcher details](launcher/README.md).
+For the source-built audio fallback, working FPS limit and matched renderer,
+use `build.cmd -release fable_2`; see [build instructions, tests and known
+limits](docs/RUNTIME_FIXES.md). Remaster assets and save editing are not included.
 
 
 
@@ -406,9 +412,10 @@ hardcoded paths**. Prerequisites (all standard tools):
 - **Internet** on first build — `build.cmd` auto-downloads the prebuilt
   ReXGlue SDK v0.10.0 (~100 MB) from the
   [official release](https://github.com/rexglue/rexglue-sdk/releases/tag/v0.10.0)
-  into `thirdparty\rexglue-sdk\`. A pre-existing SDK is used instead if found:
-  `thirdparty\rexglue-sdk\win-amd64` first, then a sibling
-  `..\rexglue-sdk-0.10.0-win-amd64\win-amd64`.
+  into `out\tooling\rexglue-sdk-0.10.0\`. A compatible official SDK on PATH
+  is used instead if present. Downloads never replace the source submodule.
+- **Python and Git** for code generation and source-SDK preparation; **Visual
+  Studio Build Tools / Windows SDK** (x64 developer shell) for the native build.
 
 ```
 build.cmd               # configure + fable_2_codegen (runs rexglue codegen on the manifest)
@@ -417,8 +424,10 @@ build.cmd <target>      # any other CMake target
 build.cmd -release [t]  # build as Release (-O3) instead of Debug (-r is short form)
 ```
 
-The first `build.cmd` run fetches the SDK if needed, then configures and
-builds — that is all a fresh checkout requires (plus the game content above).
+The first `build.cmd` run fetches the official SDK if needed under `out/tooling`.
+Release builds additionally build the pinned, patched SDK from source; see
+[runtime build requirements](docs/RUNTIME_FIXES.md). Game content is required
+for code generation but is never published with this repository.
 
 Manual/advanced setup (normally not needed):
 

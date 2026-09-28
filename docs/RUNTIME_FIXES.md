@@ -1,0 +1,85 @@
+# Windows runtime fixes
+
+The tested source baseline is `himdo/rexglue-sdk` commit
+`1338ec1011739c7f00f8df9b9473e34d3dd9f2df` (upstream's dog rendering fix).
+`thirdparty/rexglue-sdk-runtime-fixes.patch` carries the additional audio,
+frame-pacing, Release FPS-counter and Windows export changes as source.
+No SDK fork, binary download of a patched runtime, game files or saves are
+required from this contribution. Original GOTY game files are still required
+to generate and run the game.
+
+## Build
+
+Use a Visual Studio x64 developer shell with LLVM 20+, Ninja, CMake, Python
+and the .NET 8 SDK on PATH. From the repository root:
+
+```cmd
+build.cmd -release fable_2
+build.cmd launcher-self-contained
+tools\test_runtime_fixes.cmd
+dotnet run --project launcher/Fable2.Launcher.ConfigTests -c Release
+```
+
+Release builds prepare the pinned SDK, apply the patch, build D3D12 runtime
+and GPU targets, and stage matched headers, integration sources, import
+libraries and DLLs. The host is rebuilt against that staged SDK. The official
+0.10.0 codegen executable remains in a separate directory with its original
+runtime; mixing newer native DLLs into its directory is not supported.
+Patch conflicts and unexpected SDK revisions fail rather than overwrite edits.
+The unavailable upstream libmspack pin is replaced by its earlier public
+`305907723a4e7ab2018e58040059ffb5e77db837` revision. The Windows helper only
+materializes that revision's symlink blobs after validating their targets.
+
+Downloaded SDKs live under `out/tooling`, not inside the source submodule.
+Put the published launcher beside the Release game EXE, `fable2_build.json`,
+`app-icon.png` and its matched DLLs. The previous experimental Vulkan build
+path is not the default for these fixes; do not replace this pair with DLLs
+left over from that build. Debug/other-platform configurations and Vulkan
+have not been validated for this contribution.
+
+## Behavior
+
+When SDL cannot initialize or open an audio device, each affected audio client
+gets a silent, clocked consumer at 256 samples / 48 kHz. It returns frame
+permits at approximately 5.33 ms intervals, performs no guest-memory reads,
+does not produce idle permits or catch-up bursts, and joins before shutdown.
+Working SDL devices continue using the existing audio path. This is a startup
+fallback, not hot-plug recovery or a general sound-quality fix.
+`StartWithoutAudio.cmd` forces an invalid SDL3 backend in the launched process
+only. It does not change Windows device settings. Start a fresh game/launcher
+process for this test, select the game folder if necessary, then load a save
+and exercise gameplay. Relaunch normally to test real sound output.
+
+`frame_limit` is a host swap limiter: 0 disables it, with SDK range 0–240.
+The launcher offers 30, 60 and unlimited. Fable waits for two guest vblanks;
+the old 60-Hz guest pacing therefore held it at 30 even with a 60-FPS limit.
+`guest_vblank_pacing` keeps the old SDK behavior by default, but the launcher
+disables it for 60/unlimited independently of presentation VSync. The limiter
+uses a private high-resolution waitable timer on Windows, with a standard wait
+fallback, and does not change the guest clock or advertised video mode.
+F3 counts guest swaps in Release, averaged over a short window and including
+stalls; it does not count monitor refreshes or establish unique rendered frames.
+
+Hero/dog resolve readback is the upstream fix, not a new implementation here.
+Credit for the original approach/address goes to just-harry's Unofficial Xenia
+femtofork, with the ReXGlue implementation maintained upstream. Explicit
+readback configuration still takes precedence over the application's default.
+
+## Validation and remaining limits
+
+Both unchanged USA/EU and German GOTY images started with the same native EXE.
+On the German GOTY build the tester loaded a Version 1 adult-hero save and
+confirmed normal hero and dog rendering. The tester also confirmed up to
+60 FPS with the cap and approximately 150 FPS in unlimited mode. Launcher
+tests cover edition validation, output/render mappings, FPS mappings,
+preferences surviving runtime rewrites, unknown-setting preservation and
+dropdown contrast. Synthetic audio, limiter and FPS-meter tests passed, and
+the patch applied cleanly and idempotently to a fresh SDK checkout.
+
+The forced missing-audio-backend build started successfully for the tester;
+SDL failure-path timing and shutdown were also checked separately. This does
+not establish every physical-device failure, audible playback on all devices,
+or unplug/replug recovery. There is no claim that long-session simulation,
+cutscenes or timing above 60 FPS are fully correct. Frame drops below 20 FPS
+were reported and remain unresolved. Other regional/TU revisions, exhaustive
+save compatibility and remaster features are outside this change.

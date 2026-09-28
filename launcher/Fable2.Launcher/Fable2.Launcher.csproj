@@ -6,6 +6,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>Fable2Launcher</AssemblyName>
+    <AssemblyTitle>Fable 2 Recompiled Launcher</AssemblyTitle>
+    <Product>Fable 2 Recompiled</Product>
+    <ApplicationIcon>..\..\assets\app-icon.ico</ApplicationIcon>
     <RootNamespace>Fable2Launcher</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <Resource Include="..\..\assets\app-icon.png" Link="Assets\app-icon.png" />
+  </ItemGroup>
 </Project>

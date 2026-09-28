@@ -36,6 +36,7 @@ try
     Require(roundTrip["custom_mod"] == "true", "roundtrip unknown setting failed");
     Console.WriteLine("Launcher configuration roundtrip passed.");
 
+
     foreach (string aa in new[] { "none", "fxaa", "fxaa_extreme" })
     {
         var graphics = GraphicsSettings.Create("4k", "3", "5", aa, "borderless", true);
@@ -52,6 +53,33 @@ try
     Require(GraphicsSettings.Create("1440p", "2", "4", "fxaa", "exclusive", true)["fullscreen_exclusive"] == "true", "exclusive fullscreen failed");
     RequireThrows(() => GraphicsSettings.Create("8k", "3", "5", "none", "windowed", true), "unsupported resolution accepted");
     RequireThrows(() => GraphicsSettings.Create("4k", "3", "5", "unknown", "windowed", true), "unsupported AA accepted");
+    foreach (string cap in new[] { "0", "30", "60" })
+    {
+        var capped = GraphicsSettings.Create("1080p", "2", "4", "none", "windowed", false, cap);
+        Require(capped["frame_limit"] == cap, "FPS limit mapping failed");
+        Require(capped["guest_vblank_pacing"] == (cap == "30" ? "true" : "false"), "legacy guest 30-FPS gate was not handled");
+        Require(capped["vsync"] == "false", "guest pacing changed host VSync");
+        LauncherConfigFile.WriteValues(configPath, capped, GraphicsSettings.ManagedKeys);
+        Require(LauncherConfigFile.ReadValues(configPath)["frame_limit"] == cap, "FPS limit roundtrip failed");
+        Require(!capped.ContainsKey("video_mode_refresh_rate"), "FPS cap changed guest refresh mode");
+    }
+    RequireThrows(() => GraphicsSettings.Create("1080p", "2", "4", "none", "windowed", true, "144"), "unsupported FPS cap accepted");
+    Console.WriteLine("30/60/unlimited FPS mapping, validation and persistence passed.");
+
+    var preferred = GraphicsSettings.Create("4k", "3", "4", "fxaa", "windowed", false, "60");
+    string preferencesPath = Path.Combine(testDirectory, "launcher-settings.toml");
+    LauncherConfigFile.WriteValues(preferencesPath, preferred, GraphicsSettings.ManagedKeys);
+    // Simulate runtime serialization/replacement, then reopen the launcher.
+    File.WriteAllText(configPath, "window_width = 1280\nwindow_height = 720\nresolution_scale = 1\ncustom_mod = true\n");
+    var restored = LauncherConfigFile.ReadLauncherValues(testDirectory);
+    foreach ((string key, string value) in preferred)
+        Require(restored[key] == value, "saved launcher choice was lost: " + key);
+    Require(restored["custom_mod"] == "true", "runtime-only option was lost");
+    LauncherConfigFile.WriteValues(configPath, restored, GraphicsSettings.ManagedKeys);
+    Require(LauncherConfigFile.ReadValues(configPath)["resolution_scale"] == "3", "launch writeback lost scale");
+    File.Delete(preferencesPath);
+    Require(LauncherConfigFile.ReadLauncherValues(testDirectory)["window_width"] == "3840", "legacy config import failed");
+    Console.WriteLine("Launcher preferences survive runtime rewrites; legacy config import passed.");
 
     string tablePath = Path.Combine(testDirectory, "tables.toml");
     File.WriteAllText(tablePath, "custom = \"keep # literal\"\n[other]\nvsync = false\n");

@@ -50,21 +50,20 @@ if errorlevel 1 (
     if defined NINJADIR set "PATH=%NINJADIR%;%PATH%"
 )
 
-rem ReXGlue SDK: prefer a rexglue.exe found on PATH (SDK root = <bin>\..),
-rem then thirdparty\rexglue-sdk in this repo (fetched by tools\setup_sdk.cmd),
-rem then a sibling install, else auto-download.
+rem Official codegen SDK: prefer rexglue.exe on PATH, then the downloaded
+rem package under out/tooling. Never download over the source submodule.
 set "REXSDK="
 for /f "delims=" %%f in ('where rexglue.exe 2^>nul') do (
     if not defined REXSDK for %%d in ("%%~dpf..") do set "REXSDK=%%~fdd"
 )
-if not defined REXSDK set "REXSDK=%~dp0thirdparty\rexglue-sdk\win-amd64"
+if not defined REXSDK set "REXSDK=%~dp0out\tooling\rexglue-sdk-0.10.0\win-amd64"
 if not exist "%REXSDK%\lib\cmake\rexglue\rexglueConfig.cmake" (
     set "REXSDK=%~dp0..\rexglue-sdk-0.10.0.9-dev.g923c1a5-win-amd64\win-amd64"
 )
 if not exist "%REXSDK%\lib\cmake\rexglue\rexglueConfig.cmake" (
     echo ReXGlue SDK not found; downloading via tools\setup_sdk.cmd ...
     call "%~dp0tools\setup_sdk.cmd" || exit /b 1
-    set "REXSDK=%~dp0thirdparty\rexglue-sdk\win-amd64"
+    set "REXSDK=%~dp0out\tooling\rexglue-sdk-0.10.0\win-amd64"
 )
 if not exist "%REXSDK%\lib\cmake\rexglue\rexglueConfig.cmake" (
     echo Error: ReXGlue SDK not found under %REXSDK% 1>&2
@@ -126,25 +125,30 @@ if "%CLEAN%"=="1" (
     exit /b 0
 )
 
-rem SDK source (the Vulkan plugin + source runtime): the thirdparty\rexglue-sdk
-rem submodule (your fork, branch vsync-present-gate). The CMake staging only
-rem swaps the source runtime/plugin in if they are BUILT under
-rem <SDKSRC>\out\win-amd64\Release, so build the SDK first (Release) for a
-rem -release / fable_2_profiler build; the Debug config does not stage them.
-set "SDKSRC=%~dp0thirdparty\rexglue-sdk"
-if not exist "%SDKSRC%\CMakeLists.txt" set "SDKSRC=%~dp0..\rexglue-sdk"
-if not exist "%SDKSRC%\CMakeLists.txt" (
-    echo SDK source not found; run: git submodule update --init --recursive 1>&2
-    exit /b 1
+rem Bootstrap CMake integration from the existing manifest on a fresh clone.
+rem Do not run rexglue init: that would replace the project's authored files.
+if not exist "generated\rexglue.cmake" (
+    "%REXSDK%\bin\rexglue.exe" codegen fable_2_manifest.toml || exit /b 1
 )
 
-rem Build the SDK source (Release) so the staged pair is your fork's
-rem (dual-backend, vsync-capped) runtime + plugin, not the prebuilt 0.10.0 pair.
+rem Pinned source submodule, needed by the matched Release runtime build.
+set "SDKSRC=%~dp0thirdparty\rexglue-sdk"
+if not exist "%SDKSRC%\CMakeLists.txt" (
+    git submodule update --init thirdparty/rexglue-sdk || exit /b 1
+)
+
+rem Release uses the pinned, source-patched runtime with matched host headers.
 if /i not "%CONFIG%"=="win-amd64-debug" (
-    call "%~dp0tools\build_sdk_vulkan.cmd" || exit /b 1
+    call "%~dp0tools\build_runtime_sdk.cmd" "%REXSDK%" || exit /b 1
+    set "CODEGENSDK=%REXSDK%"
+    set "REXSDK=%~dp0out\tooling\runtime-sdk\win-amd64"
 )
 
 rem (inline -D with quotes at the call site: cmd cannot carry a quoted value
 rem in a variable for paths with spaces)
-cmake --preset %CONFIG% -DCMAKE_PREFIX_PATH="%REXSDK%" -DREXGLUE_SDK_ROOT="%REXSDK%" -DREXGLUE_SDK_SOURCE="%SDKSRC%" || exit /b 1
+if defined CODEGENSDK (
+    cmake --preset %CONFIG% -DCMAKE_PREFIX_PATH="%REXSDK%" -Drexglue_DIR="%REXSDK%\lib\cmake\rexglue" -DREXGLUE_SDK_ROOT="%REXSDK%" -DREXGLUE_SDK_SOURCE="%SDKSRC%" -DFABLE2_CODEGEN_TOOL="%CODEGENSDK%\bin\rexglue.exe" || exit /b 1
+) else (
+    cmake --preset %CONFIG% -DCMAKE_PREFIX_PATH="%REXSDK%" -Drexglue_DIR="%REXSDK%\lib\cmake\rexglue" -DREXGLUE_SDK_ROOT="%REXSDK%" -DREXGLUE_SDK_SOURCE="%SDKSRC%" -DFABLE2_CODEGEN_TOOL= || exit /b 1
+)
 cmake --build out\build\%CONFIG% --target %TARGET%

@@ -1,61 +1,48 @@
-# Fable II Recomp Launcher
+# Windows launcher
 
-The launcher edits the ReXGlue cvar file `fable_2.toml` without discarding
-unknown settings, then starts `fable_2.exe` from its own directory. Game data
-may live elsewhere: the launcher passes the selected root with `--game_data_root`.
+A .NET 8 WPF settings launcher for verified GOTY USA/Europe and German GOTY
+dumps. It validates the original XEX and content markers, then checks the
+native build descriptor. Unknown revisions and known mixed retail/TU1 content
+are rejected; no original game files are copied or modified.
 
-Managed settings:
+Settings: 720p/1080p/1440p/4K output, 1x–4x internal render scale, anisotropic
+filtering (game default through 16x), none/FXAA/FXAA Extreme, VSync,
+windowed/borderless/exclusive fullscreen and 30/60/unlimited FPS. Output size
+is separate from the original 720p guest mode. The FPS options need the
+matched source-built Release runtime described in
+[the runtime guide](../docs/RUNTIME_FIXES.md). Higher rates are not a promise
+of correct timing in every scene.
 
-- output/window resolution (`window_width`, `window_height`)
-- internal 3D render scale (`resolution_scale`)
-- anisotropic texture filtering (`anisotropic_override`)
-- optional post-process anti-aliasing: Off, FXAA, FXAA Extreme (`swap_post_effect`)
-- VSync and fullscreen mode
+Dropdowns use dark text on a light background, including the selected item.
+There are no texture/font replacements, remaster switches or save editors.
+The launcher and game use an original project-owned book/tree icon, not
+extracted game art; see [asset provenance](../assets/README.md).
 
-The launcher clears the combined `resolution` shortcut on save. This keeps the
-emulated Xbox video mode at its original 720p and controls presentation size
-separately, so a 3x internal scale means 3840x2160 rather than accidentally
-multiplying an already overridden 4K guest mode.
-
-FXAA uses the renderer's existing post-process option; Off leaves game-controlled
-AA alone. Higher internal render scales also allow supersampling when displayed
-at a lower output resolution. This is a graphics/settings launcher, not a texture,
-font, remaster or save editor. Dropdowns use dark text on a light background,
-with explicit selected/hover colors for readability.
-
-The first save keeps the original config as
-`fable_2.toml.launcher-backup`. The selected game directory is remembered in
-the current user's local application data and is not written to the repo.
-
-## Build
-
-Requires the .NET 8 SDK on Windows:
+Build from the repository root:
 
 ```cmd
-launcher\build-launcher.cmd
+build.cmd launcher
+build.cmd launcher-self-contained
+dotnet run --project launcher/Fable2.Launcher.ConfigTests -c Release
 ```
 
-This creates a small framework-dependent single-file executable in
-`out\launcher`. For a distributable build that bundles the .NET runtime:
+The first build needs the .NET 8 SDK; the second bundles the desktop runtime.
+Output is `out/tests/launcher-build/Fable2Launcher.exe`. Put it beside
+`fable_2.exe`, its matched DLLs, `fable2_build.json` and `app-icon.png`.
 
-```cmd
-launcher\build-launcher.cmd self-contained
-```
+A fresh launcher starts with no selected game folder. After choosing one,
+`launcher-game-path.txt` beside the launcher remembers that user's location.
+No developer path, global fallback or automatic dump selection is embedded.
+The directory must be writable to persist settings.
 
-Place `Fable2Launcher.exe` next to `fable_2.exe` and the generated
-`fable2_build.json`. Choose the original gamefiles folder containing
-`default.xex` and `data` (not necessarily the EXE folder).
+`launcher-settings.toml` stores only the managed preferences. The launcher
+reads existing `fable_2.toml` first for legacy configurations, then overlays
+those preferences so runtime rewrites cannot reset output resolution or render
+scale. Save/start writes both files. Unknown engine settings are preserved,
+and the first engine-config write creates a one-time backup. Saves, caches and
+logs remain beside the native EXE, not in the original dump.
 
-The launcher automatically identifies GOTY USA/Europe or German GOTY from
-the exact original XEX hash and content markers. The dual-GOTY native build
-(`FABLE2_BUILD_PROFILE=goty-compatible`, default) accepts both verified images
-and seeds English or German only if the user has not explicitly set a language.
-An old USA/EU executable without a build descriptor cannot launch German GOTY.
-Unknown, incomplete and mixed retail/TU1 content is rejected before launching.
-The native application independently repeats validation, so direct EXE startup
-cannot bypass the profile check. This is not general support for arbitrary
-German/Russian/retail XEXs.
-
-Settings, saves, logs and shader caches remain beside the native EXE; game dumps
-are only read. Public packages must contain the launcher, native EXE, matching
-runtime/plugin and build descriptor, never original XEXs, game data or saves.
+F3 in the game shows the guest-swap FPS counter in Release.
+`StartWithoutAudio.cmd`, staged with the native EXE, exercises the clocked
+silent fallback without disabling any Windows device. Exit existing game and
+launcher processes before running that test.

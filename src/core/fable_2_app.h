@@ -50,6 +50,7 @@ void record_a_press(std::int64_t ms);
 }
 #endif  // FABLE2_REMOTE_CONTROL
 #include "xex_verify.h"
+#include "game_branding.h"
 
 class Fable2App : public rex::ReXApp {
  public:
@@ -116,6 +117,7 @@ class Fable2App : public rex::ReXApp {
   }
 
   void OnPostSetup() override {
+    fable2::branding::Apply(window());
     // Hero/dog black-texture fix (see plans/hero-dog-texture-readback.md).
     // Approach + guest base 0x12704000 credit just-harry's Unofficial Xenia
     // femtofork for Fable II. readback_resolve_force_addresses is defined in the

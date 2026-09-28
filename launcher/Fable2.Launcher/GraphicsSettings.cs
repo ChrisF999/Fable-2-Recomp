@@ -7,11 +7,13 @@ public static class GraphicsSettings
     public static readonly string[] ManagedKeys =
     [
         "resolution", "window_width", "window_height", "resolution_scale",
-        "anisotropic_override", "swap_post_effect", "vsync", "fullscreen", "fullscreen_exclusive"
+        "anisotropic_override", "swap_post_effect", "vsync", "fullscreen", "fullscreen_exclusive",
+        "frame_limit", "guest_vblank_pacing"
     ];
 
     public static Dictionary<string, string> Create(string resolution, string scale,
-        string anisotropic, string antiAliasing, string displayMode, bool vsync)
+        string anisotropic, string antiAliasing, string displayMode, bool vsync,
+        string frameLimit = "0")
     {
         (int width, int height) = resolution switch
         {
@@ -22,7 +24,8 @@ public static class GraphicsSettings
         if (!new[] { "1", "2", "3", "4" }.Contains(scale) ||
             !new[] { "-1", "1", "2", "3", "4", "5" }.Contains(anisotropic) ||
             !new[] { "none", "fxaa", "fxaa_extreme" }.Contains(antiAliasing) ||
-            !new[] { "windowed", "borderless", "exclusive" }.Contains(displayMode))
+            !new[] { "windowed", "borderless", "exclusive" }.Contains(displayMode) ||
+            !new[] { "0", "30", "60" }.Contains(frameLimit))
             throw new ArgumentException("Unsupported graphics setting");
 
         return new(StringComparer.OrdinalIgnoreCase)
@@ -35,6 +38,11 @@ public static class GraphicsSettings
             ["anisotropic_override"] = anisotropic,
             ["swap_post_effect"] = $"\"{antiAliasing}\"",
             ["vsync"] = vsync.ToString().ToLowerInvariant(),
+            ["frame_limit"] = frameLimit,
+            // Fable waits for two guest vblanks per frame. Legacy 60-Hz
+            // guest pacing therefore caps it at 30 even with a 60-FPS limiter.
+            // This does not disable the user's host presentation VSync.
+            ["guest_vblank_pacing"] = (frameLimit == "30").ToString().ToLowerInvariant(),
             ["fullscreen"] = (displayMode != "windowed").ToString().ToLowerInvariant(),
             ["fullscreen_exclusive"] = (displayMode == "exclusive").ToString().ToLowerInvariant()
         };

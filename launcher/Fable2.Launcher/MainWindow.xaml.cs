@@ -30,6 +30,7 @@ public partial class MainWindow : Window
         SelectByTag(AnisotropicCombo, "5");
         SelectByTag(AntiAliasingCombo, "none");
         SelectByTag(DisplayModeCombo, "borderless");
+        SelectByTag(FrameLimitCombo, "0");
         VsyncCheck.IsChecked = true;
     }
 
@@ -45,13 +46,7 @@ public partial class MainWindow : Window
             SetGameDirectory(configuredPath);
             return;
         }
-        if (File.Exists(Path.Combine(launcherDirectory, "fable_2.exe")))
-        {
-            if (File.Exists(Path.Combine(launcherDirectory, "default.xex")))
-                SetGameDirectory(launcherDirectory);
-            else
-                StatusText.Text = "Choose your original gamefiles folder (default.xex and data).";
-        }
+        StatusText.Text = "Choose your original gamefiles folder (default.xex and data).";
     }
 
     private void SetGameDirectory(string directory)
@@ -85,8 +80,7 @@ public partial class MainWindow : Window
         {
             _values.Clear();
             SetDefaults();
-            string path = Path.Combine(_executableDirectory!, "fable_2.toml");
-            foreach ((string key, string value) in LauncherConfigFile.ReadValues(path))
+            foreach ((string key, string value) in LauncherConfigFile.ReadLauncherValues(_executableDirectory!))
                 _values[key] = value;
 
             string outputResolution = (GetValue("window_width", ""), GetValue("window_height", "")) switch
@@ -101,6 +95,7 @@ public partial class MainWindow : Window
             SelectByTag(RenderScaleCombo, GetValue("resolution_scale", "2"));
             SelectByTag(AnisotropicCombo, GetValue("anisotropic_override", "5"));
             SelectByTag(AntiAliasingCombo, Unquote(GetValue("swap_post_effect", "none")));
+            SelectByTag(FrameLimitCombo, GetValue("frame_limit", "0"));
 
             bool fullscreen = ParseBool(GetValue("fullscreen", "true"), true);
             bool exclusive = ParseBool(GetValue("fullscreen_exclusive", "false"), false);
@@ -110,6 +105,7 @@ public partial class MainWindow : Window
         }
         finally { _loading = false; }
         RefreshSummary();
+        ConfigStateText.Text = "Settings loaded";
     }
 
     private string GetValue(string key, string fallback) =>
@@ -134,7 +130,8 @@ public partial class MainWindow : Window
                 return;
             }
         }
-        combo.SelectedIndex = 0;
+        // An unknown/missing value must not silently select the first (lowest)
+        // resolution or render scale. Keep the explicit default/current choice.
     }
 
     private Dictionary<string, string> CollectSettings()
@@ -142,7 +139,7 @@ public partial class MainWindow : Window
         return GraphicsSettings.Create(SelectedTag(ResolutionCombo) ?? "1080p",
             SelectedTag(RenderScaleCombo) ?? "2", SelectedTag(AnisotropicCombo) ?? "5",
             SelectedTag(AntiAliasingCombo) ?? "none", SelectedTag(DisplayModeCombo) ?? "borderless",
-            VsyncCheck.IsChecked == true);
+            VsyncCheck.IsChecked == true, SelectedTag(FrameLimitCombo) ?? "0");
     }
 
     private bool SaveConfiguration()
@@ -159,6 +156,10 @@ public partial class MainWindow : Window
         try
         {
             LauncherConfigFile.WriteValues(path, settings, GraphicsSettings.ManagedKeys);
+            LauncherConfigFile.WriteValues(Path.Combine(_executableDirectory,
+                "launcher-settings.toml"), settings, GraphicsSettings.ManagedKeys);
+            _values.Clear();
+            foreach ((string key, string value) in settings) _values[key] = value;
         }
         catch (Exception exception)
         {
@@ -199,7 +200,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void RefreshSummary()
+    private void RefreshSummary(bool markDirty = false)
     {
         int scale = int.TryParse(SelectedTag(RenderScaleCombo), NumberStyles.Integer,
             CultureInfo.InvariantCulture, out int parsedScale) ? parsedScale : 1;
@@ -215,7 +216,7 @@ public partial class MainWindow : Window
         };
         OutputResolutionText.Text = $"Output: {output}";
 
-        if (!_loading)
+        if (!_loading && markDirty)
         {
             ConfigStateText.Text = "Unsaved changes";
         }
@@ -223,12 +224,12 @@ public partial class MainWindow : Window
 
     private void SettingChanged(object sender, RoutedEventArgs e)
     {
-        if (!_loading) RefreshSummary();
+        if (!_loading) RefreshSummary(markDirty: true);
     }
 
     private void SettingChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!_loading) RefreshSummary();
+        if (!_loading) RefreshSummary(markDirty: true);
     }
 
     private void PresetClicked(object sender, RoutedEventArgs e)
@@ -264,7 +265,7 @@ public partial class MainWindow : Window
         SelectByTag(DisplayModeCombo, "borderless");
         SelectByTag(AntiAliasingCombo, "none");
         VsyncCheck.IsChecked = true;
-        RefreshSummary();
+        RefreshSummary(markDirty: true);
     }
 
     private void BrowseClicked(object sender, RoutedEventArgs e)
@@ -292,13 +293,16 @@ public partial class MainWindow : Window
 
 internal static class LauncherState
 {
-    private static readonly string StatePath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "Fable2Recomp", "launcher-game-path.txt");
+    private static readonly string LocalStatePath = Path.Combine(AppContext.BaseDirectory,
+        "launcher-game-path.txt");
 
     public static string? LoadGameDirectory()
     {
-        try { return File.Exists(StatePath) ? File.ReadAllText(StatePath).Trim() : null; }
+        try
+        {
+            if (File.Exists(LocalStatePath)) return File.ReadAllText(LocalStatePath).Trim();
+            return null;
+        }
         catch { return null; }
     }
 
@@ -306,12 +310,13 @@ internal static class LauncherState
     {
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(StatePath)!);
-            File.WriteAllText(StatePath, directory);
+            File.WriteAllText(LocalStatePath, directory);
+            return;
         }
         catch
         {
-            // Remembering the folder is a convenience only; launching still works.
+            // Graphics saving reports write failures separately. No global
+            // fallback: different installations must not inherit other paths.
         }
     }
 }

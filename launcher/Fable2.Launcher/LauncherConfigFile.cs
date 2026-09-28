@@ -6,6 +6,14 @@ namespace Fable2Launcher;
 
 public static class LauncherConfigFile
 {
+    public static Dictionary<string, string> ReadLauncherValues(string directory)
+    {
+        var values = ReadValues(Path.Combine(directory, "fable_2.toml"));
+        foreach ((string key, string value) in ReadValues(Path.Combine(directory, "launcher-settings.toml")))
+            if (GraphicsSettings.ManagedKeys.Contains(key)) values[key] = value;
+        return values;
+    }
+
     private static readonly Regex ValuePattern = new(
         @"^\s*([A-Za-z0-9_]+)\s*=\s*(.*?)\s*(?:#.*)?$",
         RegexOptions.Compiled);

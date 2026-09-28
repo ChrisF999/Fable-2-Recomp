@@ -42,10 +42,13 @@ Local Windows tests: a native Release build started with both unchanged GOTY
 dumps using the same EXE. German startup was confirmed by the tester; a copy
 of the tester's existing USA/EU save loaded normally on the matched renderer
 build. Launcher config/profile tests and native SHA-256/cache tests passed.
-German extended play, save/reload, region transitions, complete localization,
-adult hero/dog visuals and cross-edition save compatibility remain unverified.
+The tester subsequently loaded a Version 1 adult-hero save on German GOTY and
+confirmed normal hero/dog rendering with the matched upstream renderer.
+Extended play, region transitions, complete localization and exhaustive
+cross-edition/save-version compatibility remain unverified.
 Existing AllocFixed messages and a missing `de-de/lang.ini` lookup are not fixed
-by this change. No renderer/SDK behavior or allocator fixes are included here.
+by this change. See [runtime fixes and validation](RUNTIME_FIXES.md) for the
+additional SDK patch and frame-pacing/audio tests; no allocator fix is claimed.
 
 Tests require no distributed game files:
 
