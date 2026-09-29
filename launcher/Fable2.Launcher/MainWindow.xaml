@@ -141,13 +141,9 @@
               </StackPanel>
 
               <StackPanel Margin="0,18,0,0">
-                <TextBlock Text="FPS LIMIT — LOCAL RUNTIME PROTOTYPE" Style="{StaticResource FieldLabel}" />
-                <ComboBox x:Name="FrameLimitCombo" SelectionChanged="SettingChanged">
-                  <ComboBoxItem Tag="30">30 FPS cap</ComboBoxItem>
-                  <ComboBoxItem Tag="60">60 FPS cap</ComboBoxItem>
-                  <ComboBoxItem Tag="0">Unlimited — experimental</ComboBoxItem>
-                </ComboBox>
-                <TextBlock Text="Requires the matching frame-limit runtime. VSync may impose a lower limit; unlimited does not guarantee safe gameplay above 60 FPS."
+                <TextBlock Text="FPS LIMIT" Style="{StaticResource FieldLabel}" />
+                <ComboBox x:Name="FrameLimitCombo" SelectionChanged="SettingChanged" />
+                <TextBlock Text="Requires the matching runtime. VSync may impose a lower limit; gameplay timing above 60 FPS is not fully verified."
                            FontSize="12" Foreground="{StaticResource MutedTextBrush}" Margin="0,6,0,0" TextWrapping="Wrap" />
               </StackPanel>
 

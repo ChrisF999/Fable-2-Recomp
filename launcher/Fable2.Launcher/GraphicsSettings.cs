@@ -1,4 +1,5 @@
 using System.Globalization;
+using Fable2Launcher.Constants;
 
 namespace Fable2Launcher;
 
@@ -25,7 +26,7 @@ public static class GraphicsSettings
             !new[] { "-1", "1", "2", "3", "4", "5" }.Contains(anisotropic) ||
             !new[] { "none", "fxaa", "fxaa_extreme" }.Contains(antiAliasing) ||
             !new[] { "windowed", "borderless", "exclusive" }.Contains(displayMode) ||
-            !new[] { "0", "30", "60" }.Contains(frameLimit))
+            !GraphicsOptions.FrameLimits.Any(option => option.Value == frameLimit))
             throw new ArgumentException("Unsupported graphics setting");
 
         return new(StringComparer.OrdinalIgnoreCase)

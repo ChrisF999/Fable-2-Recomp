@@ -30,6 +30,9 @@ public partial class MainWindow : Window
         SelectByTag(AnisotropicCombo, "5");
         SelectByTag(AntiAliasingCombo, "none");
         SelectByTag(DisplayModeCombo, "borderless");
+        if (FrameLimitCombo.Items.Count == 0)
+            foreach (var option in Constants.GraphicsOptions.FrameLimits)
+                FrameLimitCombo.Items.Add(new ComboBoxItem { Tag = option.Value, Content = option.Label });
         SelectByTag(FrameLimitCombo, "0");
         VsyncCheck.IsChecked = true;
     }

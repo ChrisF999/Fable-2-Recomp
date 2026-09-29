@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using Fable2Launcher.Constants;
 
 namespace Fable2Launcher;
 
@@ -18,7 +19,7 @@ public static class GameLaunchPlanner
         // Legacy executables only support USA/EU. A generated descriptor permits
         // the German or dual-GOTY executable; never silently try an old US build.
         string descriptor = Path.Combine(executableDirectory, "fable2_build.json");
-        string[] profiles = ["goty-us-eu"];
+        string[] profiles = [GameVersions.DefaultProfile];
         if (File.Exists(descriptor))
         {
             using JsonDocument document = JsonDocument.Parse(File.ReadAllText(descriptor));

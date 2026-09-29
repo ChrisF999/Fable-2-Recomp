@@ -5,28 +5,26 @@
 cmake_minimum_required(VERSION 3.25)
 project(fable_2 LANGUAGES CXX)
 
-set(FABLE2_BUILD_PROFILE "goty-compatible" CACHE STRING "Verified guest XEX profile")
-set_property(CACHE FABLE2_BUILD_PROFILE PROPERTY STRINGS goty-compatible goty-us-eu goty-german)
-if(FABLE2_BUILD_PROFILE STREQUAL "goty-compatible")
-    # Both original GOTY XEXs produce byte-identical recompiled sources.
-    set(FABLE2_EXPECTED_XEX_SHA256 "88c4ef2e18e65409444d1b068eff921d1f7e180a5ae64edc64ba6b0872372662")
-    set(FABLE2_DEFAULT_LANGUAGE 1)
-elseif(FABLE2_BUILD_PROFILE STREQUAL "goty-us-eu")
-    set(FABLE2_EXPECTED_XEX_SHA256 "88c4ef2e18e65409444d1b068eff921d1f7e180a5ae64edc64ba6b0872372662")
-    set(FABLE2_DEFAULT_LANGUAGE 1)
-elseif(FABLE2_BUILD_PROFILE STREQUAL "goty-german")
-    set(FABLE2_EXPECTED_XEX_SHA256 "3f36e7870a06e04b3702760e93c61b1c7fded321b94021da6bfa120b424e6eb4")
-    set(FABLE2_DEFAULT_LANGUAGE 3)
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS constants/game_versions.json)
+execute_process(COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_game_versions.py --check
+    COMMAND_ERROR_IS_FATAL ANY)
+include(constants/game_versions.cmake)
+set(FABLE2_BUILD_PROFILE "${FABLE2_CATALOG_COMPATIBLE_PROFILE}" CACHE STRING "Verified guest XEX profile")
+set_property(CACHE FABLE2_BUILD_PROFILE PROPERTY STRINGS
+    "${FABLE2_CATALOG_COMPATIBLE_PROFILE}" ${FABLE2_CATALOG_PROFILES})
+if(FABLE2_BUILD_PROFILE STREQUAL FABLE2_CATALOG_COMPATIBLE_PROFILE)
+    set(FABLE2_SELECTED_PROFILES ${FABLE2_CATALOG_PROFILES})
+elseif(FABLE2_BUILD_PROFILE IN_LIST FABLE2_CATALOG_PROFILES)
+    set(FABLE2_SELECTED_PROFILES "${FABLE2_BUILD_PROFILE}")
 else()
     message(FATAL_ERROR "Unverified FABLE2_BUILD_PROFILE: ${FABLE2_BUILD_PROFILE}")
 endif()
 
 set(CMAKE_CXX_STANDARD 23)
-if(FABLE2_BUILD_PROFILE STREQUAL "goty-compatible")
-    set(FABLE2_SUPPORTED_PROFILES "[\"goty-us-eu\", \"goty-german\"]")
-else()
-    set(FABLE2_SUPPORTED_PROFILES "[\"${FABLE2_BUILD_PROFILE}\"]")
-endif()
+list(JOIN FABLE2_SELECTED_PROFILES "\", \"" FABLE2_PROFILES_JSON)
+set(FABLE2_SUPPORTED_PROFILES "[\"${FABLE2_PROFILES_JSON}\"]")
 configure_file(config/fable2_build.json.in ${CMAKE_CURRENT_BINARY_DIR}/fable2_build.json @ONLY)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -95,9 +93,7 @@ add_custom_command(TARGET fable_2 POST_BUILD
 # mark deprecated when compiled with clang (-Wdeprecated-declarations noise).
 # These are safe in this codebase; silence the deprecation on Windows.
 target_compile_definitions(fable_2 PRIVATE
-    FABLE2_EXPECTED_XEX_SHA256="${FABLE2_EXPECTED_XEX_SHA256}"
-    FABLE2_DEFAULT_LANGUAGE=${FABLE2_DEFAULT_LANGUAGE}
-    $<$<STREQUAL:${FABLE2_BUILD_PROFILE},goty-compatible>:FABLE2_GOTY_COMPATIBLE>
+    FABLE2_BUILD_PROFILE="${FABLE2_BUILD_PROFILE}"
     $<$<PLATFORM_ID:Windows>:_CRT_SECURE_NO_WARNINGS>)
 
 # Remote control server (AI input channel) is a debug-only tool: it opens a

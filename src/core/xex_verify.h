@@ -16,6 +16,8 @@
 #pragma once
 
 #include <chrono>
+#include <algorithm>
+#include "../../constants/game_versions.h"
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -26,45 +28,57 @@
 
 namespace fable2::xexverify {
 
-// SHA-256 of the default.xex this build was recompiled against.
-#ifndef FABLE2_EXPECTED_XEX_SHA256
-#define FABLE2_EXPECTED_XEX_SHA256 "88c4ef2e18e65409444d1b068eff921d1f7e180a5ae64edc64ba6b0872372662"
-#endif
-inline constexpr char kExpectedSha256[] =
-    FABLE2_EXPECTED_XEX_SHA256;
-inline constexpr char kGermanGotySha256[] =
-    "3f36e7870a06e04b3702760e93c61b1c7fded321b94021da6bfa120b424e6eb4";
-#ifdef FABLE2_GOTY_COMPATIBLE
-inline constexpr std::string_view kExpectedHashes =
-    "GOTY USA/Europe: 88c4ef2e18e65409444d1b068eff921d1f7e180a5ae64edc64ba6b0872372662; "
-    "GOTY German: 3f36e7870a06e04b3702760e93c61b1c7fded321b94021da6bfa120b424e6eb4";
+// Only catalogue entries validated for this guest-code group can be enabled.
+// A single-edition build further restricts the accepted entry by profile ID.
+#ifdef FABLE2_BUILD_PROFILE
+inline constexpr std::string_view kBuildProfile = FABLE2_BUILD_PROFILE;
+#elif defined(FABLE2_GOTY_COMPATIBLE)
+inline constexpr std::string_view kBuildProfile = versions::kCompatibleProfile;
 #else
-inline constexpr std::string_view kExpectedHashes = kExpectedSha256;
+inline constexpr std::string_view kBuildProfile = versions::kDefaultProfile;
 #endif
-inline bool IsAcceptedHash(std::string_view hash) {
-#ifdef FABLE2_GOTY_COMPATIBLE
-  return hash == kExpectedSha256 || hash == kGermanGotySha256;
-#else
-  return hash == kExpectedSha256;
-#endif
+inline constexpr bool IsEnabledVersion(const versions::GameVersion& version) {
+  return version.compatible && version.code_group == versions::kCodeGroup &&
+      (kBuildProfile == versions::kCompatibleProfile || version.id == kBuildProfile);
 }
+inline bool IsAcceptedHash(std::string_view hash) {
+  for (const auto& version : versions::kVersions)
+    if (version.hash == hash) return IsEnabledVersion(version);
+  return false;
+}
+inline const std::string kExpectedHashes = [] {
+  std::string result;
+  for (const auto& version : versions::kVersions) {
+    if (!IsEnabledVersion(version)) continue;
+    if (!result.empty()) result += "; ";
+    result += std::string(version.name) + ": " + std::string(version.hash);
+  }
+  return result;
+}();
 inline int DefaultLanguage(std::string_view hash) {
-  return hash == kGermanGotySha256 ? 3 : 1;
+  const auto* version = versions::Find(hash);
+  return version ? version->language : 0;  // Unknown hashes never get a locale.
 }
 
 // Content markers are sanity checks, not a complete game-file hash manifest.
 inline bool HasCompatibleContent(const std::filesystem::path& root, std::string_view hash) {
-  if (!IsAcceptedHash(hash)) return false;
-  const auto file = [](const std::filesystem::path& path) {
+  const auto* version = versions::Find(hash);
+  if (!version || !IsEnabledVersion(*version)) return false;
+  const auto file = [&](std::string_view path) {
     std::error_code ec;
-    return std::filesystem::is_regular_file(path, ec) && !ec;
+    return std::filesystem::is_regular_file(root / path, ec) && !ec;
   };
-  std::error_code ec;
-  const bool german_retail = file(root / "data/tu1_data.bnk") &&
-      std::filesystem::is_directory(root / "data/language/de-de", ec) && !ec;
-  return file(root / "data/gold_version.txt") && file(root / "data/startup.vfsconfig") &&
-      !german_retail && (hash != kGermanGotySha256 ||
-      file(root / "data/language/de-de/text/book.babel"));
+  const auto directory = [&](std::string_view path) {
+    std::error_code ec;
+    return std::filesystem::is_directory(root / path, ec) && !ec;
+  };
+  const bool has_rejection_rule = !version->reject_files.empty() ||
+      !version->reject_directories.empty();
+  if (has_rejection_rule &&
+      std::all_of(version->reject_files.begin(), version->reject_files.end(), file) &&
+      std::all_of(version->reject_directories.begin(), version->reject_directories.end(), directory))
+    return false;
+  return std::all_of(version->required_files.begin(), version->required_files.end(), file);
 }
 
 namespace detail {
@@ -229,7 +243,7 @@ struct Outcome {
   uint64_t mtime = 0;
 };
 
-// Verify xex_path against kExpectedSha256, using marker_path to skip the
+// Verify xex_path against the enabled catalogue entries, using marker_path to skip the
 // hash pass when a previous start already verified this exact file.
 inline Outcome Check(const std::filesystem::path& xex_path,
                      const std::filesystem::path& marker_path) {

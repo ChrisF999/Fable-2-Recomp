@@ -1,32 +1,4 @@
-# Known Fable II executable/content profiles. This is documentation and the
-# seed for future per-revision codegen builds; it does not bypass validation.
-
-[[build]]
-id = "goty-us-eu"
-name = "Game of the Year (USA/Europe)"
-xex_sha256 = "88c4ef2e18e65409444d1b068eff921d1f7e180a5ae64edc64ba6b0872372662"
-xex_size = 21217280
-status = "supported"
-required_content_markers = ["data/gold_version.txt", "data/startup.vfsconfig"]
-
-[[build]]
-id = "german-retail-tu1"
-name = "German retail / TU1 content"
-xex_sha256 = "cec9238ef5d7b391345a8897ef00a4673ae4f106f89385c81723ba5f9d0807b5"
-xex_size = 21053440
-status = "needs-own-codegen"
-observed_build_version = "23.09.13.0304"
-content_markers = ["data/tu1_data.bnk", "data/language/de-de/text/book.babel"]
-
-[[build]]
-id = "goty-german"
-name = "Game of the Year (German)"
-xex_sha256 = "3f36e7870a06e04b3702760e93c61b1c7fded321b94021da6bfa120b424e6eb4"
-xex_size = 21217280
-status = "native-built-boot-confirmed-gameplay-pending"
-media_id = "1D1F480C"
-executable_version = "0.0.0.28"
-payload_offset = 16384
-payload_sha256 = "84651650d00ccd62021847a39fad6e63da0f7c49ef587a733e215e5ec5a23a4a"
-required_content_markers = ["data/gold_version.txt", "data/startup.vfsconfig", "data/language/de-de/text/book.babel"]
-notes = "318 header bytes differ from USA/Europe GOTY; payload and all 595 generated source/header files are identical. Native Release build succeeded; exact XEX hash passed; user confirmed normal startup. Extended gameplay validation is pending."
+# Legacy catalogue location. Runtime/build definitions now share one source:
+# constants/game_versions.json, including the dump metadata previously here.
+# See constants/README.md for adding or denying a version and regenerating
+# the C#/C++/CMake object arrays. This file no longer duplicates those hashes.

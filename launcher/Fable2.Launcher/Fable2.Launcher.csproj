@@ -12,6 +12,7 @@
     <RootNamespace>Fable2Launcher</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="..\..\constants\GameVersions.cs" Link="Constants\GameVersions.cs" />
     <Resource Include="..\..\assets\app-icon.png" Link="Assets\app-icon.png" />
   </ItemGroup>
 </Project>

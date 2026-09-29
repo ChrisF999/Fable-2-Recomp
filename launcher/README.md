@@ -7,7 +7,7 @@ are rejected; no original game files are copied or modified.
 
 Settings: 720p/1080p/1440p/4K output, 1x–4x internal render scale, anisotropic
 filtering (game default through 16x), none/FXAA/FXAA Extreme, VSync,
-windowed/borderless/exclusive fullscreen and 30/60/unlimited FPS. Output size
+windowed/borderless/exclusive fullscreen and 30/60/120/144/165/240/unlimited FPS. Output size
 is separate from the original 720p guest mode. The FPS options need the
 matched source-built Release runtime described in
 [the runtime guide](../docs/RUNTIME_FIXES.md). Higher rates are not a promise
@@ -23,7 +23,7 @@ Build from the repository root:
 ```cmd
 build.cmd launcher
 build.cmd launcher-self-contained
-dotnet run --project launcher/Fable2.Launcher.ConfigTests -c Release
+dotnet run --project tests/Fable2.Launcher.ConfigTests -c Release
 ```
 
 The first build needs the .NET 8 SDK; the second bundles the desktop runtime.
@@ -46,3 +46,8 @@ F3 in the game shows the guest-swap FPS counter in Release.
 `StartWithoutAudio.cmd`, staged with the native EXE, exercises the clocked
 silent fallback without disabling any Windows device. Exit existing game and
 launcher processes before running that test.
+
+
+Launcher overview supplied by the tester (before the high-refresh presets were added):
+
+![Launcher overview](../docs/screenshots/launcher.png)

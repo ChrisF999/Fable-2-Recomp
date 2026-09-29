@@ -6,7 +6,7 @@
 int main() {
   using Meter = rex::graphics::GuestFrameMeter;
   using namespace std::chrono;
-  for (int rate : {30, 60, 120, 240}) {
+  for (int rate : {30, 60, 120, 144, 165, 240}) {
     Meter meter;
     auto epoch = Meter::Clock::time_point{};
     if (meter.Record(epoch) != 0) return 1;

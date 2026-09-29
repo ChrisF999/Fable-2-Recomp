@@ -1,4 +1,5 @@
 using Fable2Launcher;
+using Fable2Launcher.Constants;
 using System.Xml.Linq;
 
 string testDirectory = Path.Combine(Path.GetTempPath(), "fable2-launcher-config-test-" + Guid.NewGuid());
@@ -53,7 +54,7 @@ try
     Require(GraphicsSettings.Create("1440p", "2", "4", "fxaa", "exclusive", true)["fullscreen_exclusive"] == "true", "exclusive fullscreen failed");
     RequireThrows(() => GraphicsSettings.Create("8k", "3", "5", "none", "windowed", true), "unsupported resolution accepted");
     RequireThrows(() => GraphicsSettings.Create("4k", "3", "5", "unknown", "windowed", true), "unsupported AA accepted");
-    foreach (string cap in new[] { "0", "30", "60" })
+    foreach (string cap in GraphicsOptions.FrameLimits.Select(option => option.Value))
     {
         var capped = GraphicsSettings.Create("1080p", "2", "4", "none", "windowed", false, cap);
         Require(capped["frame_limit"] == cap, "FPS limit mapping failed");
@@ -63,8 +64,10 @@ try
         Require(LauncherConfigFile.ReadValues(configPath)["frame_limit"] == cap, "FPS limit roundtrip failed");
         Require(!capped.ContainsKey("video_mode_refresh_rate"), "FPS cap changed guest refresh mode");
     }
-    RequireThrows(() => GraphicsSettings.Create("1080p", "2", "4", "none", "windowed", true, "144"), "unsupported FPS cap accepted");
-    Console.WriteLine("30/60/unlimited FPS mapping, validation and persistence passed.");
+    foreach (string invalid in new[] { "-1", "241", "143", "144.5", "unknown" })
+        RequireThrows(() => GraphicsSettings.Create("1080p", "2", "4", "none", "windowed", true, invalid), "unsupported FPS preset accepted");
+    Require(GraphicsOptions.FrameLimits.Any(option => option.Value == "144"), "144 FPS preset missing");
+    Console.WriteLine("30/60/120/144/165/240/unlimited mapping, validation and persistence passed.");
 
     var preferred = GraphicsSettings.Create("4k", "3", "4", "fxaa", "windowed", false, "60");
     string preferencesPath = Path.Combine(testDirectory, "launcher-settings.toml");
@@ -91,8 +94,7 @@ try
     Require(LauncherConfigFile.ReadValues(tablePath)["vsync"] == "false", "root value not loaded");
     Console.WriteLine("Graphics options, anti-aliasing and table preservation passed.");
 
-    string appXaml = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,
-        "..", "..", "..", "..", "Fable2.Launcher", "App.xaml"));
+    string appXaml = Path.Combine(AppContext.BaseDirectory, "TestData", "App.xaml");
     XNamespace xamlNamespace = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
     var styles = XDocument.Load(appXaml).Descendants(xamlNamespace + "Style").ToList();
     var textStyle = styles.Single(style => (string?)style.Attribute("TargetType") == "TextBlock");
@@ -106,31 +108,82 @@ try
     }
     Console.WriteLine("Dropdown text inheritance and contrast styles passed.");
 
-    const string usHash = "88c4ef2e18e65409444d1b068eff921d1f7e180a5ae64edc64ba6b0872372662";
-    const string deHash = "3f36e7870a06e04b3702760e93c61b1c7fded321b94021da6bfa120b424e6eb4";
-    var us = GameCompatibilityInspector.Classify(usHash, true, false, false);
-    var de = GameCompatibilityInspector.Classify(deHash, true, false, true);
-    Require(us.Supported && us.Profile == "goty-us-eu", "USA/EU classification failed");
-    Require(de.Supported && de.Profile == "goty-german", "German classification failed");
-    Require(!GameCompatibilityInspector.Classify(usHash, true, true, true).Supported, "mixed US/TU1 accepted");
-    Require(!GameCompatibilityInspector.Classify(deHash, true, false, false).Supported, "incomplete German accepted");
-    Require(!GameCompatibilityInspector.Classify(deHash, false, false, true).Supported, "missing GOTY markers accepted");
-    Require(!GameCompatibilityInspector.Classify(deHash, true, true, true).Supported, "mixed German/TU1 accepted");
-    Require(!GameCompatibilityInspector.Classify("unknown", true, false, true).Supported, "unknown hash accepted");
-    Require(!GameCompatibilityInspector.Classify("cec9238ef5d7b391345a8897ef00a4673ae4f106f89385c81723ba5f9d0807b5", false, true, true).Supported, "retail/TU1 accepted");
+    var supported = GameVersions.All.Where(v => v.Compatible && v.CodeGroup == GameVersions.CodeGroup).ToArray();
+    foreach (GameVersion version in GameVersions.All)
+    {
+        var files = version.RequiredFiles.ToHashSet(StringComparer.Ordinal);
+        var directories = new HashSet<string>(StringComparer.Ordinal);
+        var result = GameCompatibilityInspector.Classify(version.Hash, files.Contains, directories.Contains);
+        Require(result.Supported == supported.Contains(version), "catalogue compatibility differs: " + version.Id);
+        Require(result.Message == version.Reason, "catalogue reason differs: " + version.Id);
+        if (!result.Supported) continue;
+        Require(result.Profile == version.Id && result.Label == version.Name + " detected", "catalogue identity differs");
+        Require(GameCompatibilityInspector.Classify(version.Hash.ToUpperInvariant(), files.Contains, directories.Contains).Supported,
+            "case-insensitive SHA-256 recognition failed");
+        foreach (string marker in version.RequiredFiles)
+        {
+            files.Remove(marker);
+            Require(!GameCompatibilityInspector.Classify(version.Hash, files.Contains, directories.Contains).Supported,
+                "missing marker accepted: " + marker);
+            files.Add(marker);
+        }
+        if (version.RejectFiles.Length + version.RejectDirectories.Length > 0)
+        {
+            files.UnionWith(version.RejectFiles);
+            directories.UnionWith(version.RejectDirectories);
+            Require(!GameCompatibilityInspector.Classify(version.Hash, files.Contains, directories.Contains).Supported,
+                "mixed content accepted: " + version.Id);
+            foreach (string marker in version.RejectFiles)
+            {
+                files.Remove(marker);
+                Require(GameCompatibilityInspector.Classify(version.Hash, files.Contains, directories.Contains).Supported,
+                    "partial rejection rule rejected a matching dump");
+                files.Add(marker);
+            }
+        }
+    }
+    Require(!GameCompatibilityInspector.Classify("unknown", _ => true, _ => true).Supported, "unknown hash accepted");
+    // A synthetic extra locale proves that no classifier branch needs adding.
+    GameVersion extra = supported[0] with { Id = "synthetic-locale", Hash = new string('a', 64),
+        Name = "Synthetic locale", Language = 6 };
+    Require(GameCompatibilityInspector.Classify(extra.Hash, _ => true, _ => false, [extra]).Supported,
+        "extensible catalogue classification failed");
+    Require(!GameCompatibilityInspector.Classify(extra.Hash, _ => true, _ => false,
+        [extra with { Compatible = false }]).Supported, "explicitly denied extra locale accepted");
+    Require(!GameCompatibilityInspector.Classify(extra.Hash, _ => true, _ => false,
+        [extra with { CodeGroup = "unverified" }]).Supported, "unvalidated guest-code group accepted");
+
     File.WriteAllText(Path.Combine(testDirectory, "fable_2.exe"), "synthetic fixture, not an executable");
-    GameLaunchPlanner.Create(testDirectory, testDirectory, us);
-    RequireThrows(() => GameLaunchPlanner.Create(testDirectory, testDirectory, de), "legacy US executable accepted German");
-    File.WriteAllText(Path.Combine(testDirectory, "fable2_build.json"), "{\"profiles\":[\"goty-german\"]}");
-    RequireThrows(() => GameLaunchPlanner.Create(testDirectory, testDirectory, us), "German-only descriptor accepted USA/EU");
-    GameLaunchPlanner.Create(testDirectory, testDirectory, de);
-    File.WriteAllText(Path.Combine(testDirectory, "fable2_build.json"), "{\"profiles\":[\"goty-us-eu\",\"goty-german\"]}");
-    var plan = GameLaunchPlanner.Create(testDirectory, testDirectory, de);
-    Require(plan.GameRoot == Path.GetFullPath(testDirectory), "game root was not preserved");
-    GameLaunchPlanner.Create(testDirectory, testDirectory, us);
-    File.WriteAllText(Path.Combine(testDirectory, "fable2_build.json"), "{malformed");
-    RequireThrows(() => GameLaunchPlanner.Create(testDirectory, testDirectory, de), "malformed descriptor accepted");
-    Console.WriteLine("Profile recognition and dual-GOTY launch planning passed.");
+    string descriptorPath = Path.Combine(testDirectory, "fable2_build.json");
+    foreach (GameVersion version in supported)
+    {
+        var result = GameCompatibilityInspector.Classify(version.Hash, _ => true, _ => false);
+        if (version.Id == GameVersions.DefaultProfile)
+            GameLaunchPlanner.Create(testDirectory, testDirectory, result);
+        else
+            RequireThrows(() => GameLaunchPlanner.Create(testDirectory, testDirectory, result), "legacy executable accepted another profile");
+    }
+    foreach (GameVersion selected in supported)
+    {
+        File.WriteAllText(descriptorPath, System.Text.Json.JsonSerializer.Serialize(new { profiles = new[] { selected.Id } }));
+        foreach (GameVersion version in supported)
+        {
+            var result = GameCompatibilityInspector.Classify(version.Hash, _ => true, _ => false);
+            if (version == selected) GameLaunchPlanner.Create(testDirectory, testDirectory, result);
+            else RequireThrows(() => GameLaunchPlanner.Create(testDirectory, testDirectory, result), "wrong single-edition descriptor accepted");
+        }
+    }
+    File.WriteAllText(descriptorPath, System.Text.Json.JsonSerializer.Serialize(new { profiles = supported.Select(v => v.Id) }));
+    foreach (GameVersion version in supported)
+    {
+        var result = GameCompatibilityInspector.Classify(version.Hash, _ => true, _ => false);
+        var plan = GameLaunchPlanner.Create(testDirectory, testDirectory, result);
+        Require(plan.GameRoot == Path.GetFullPath(testDirectory), "game root was not preserved");
+    }
+    File.WriteAllText(descriptorPath, "{malformed");
+    RequireThrows(() => GameLaunchPlanner.Create(testDirectory, testDirectory,
+        GameCompatibilityInspector.Classify(supported[0].Hash, _ => true, _ => false)), "malformed descriptor accepted");
+    Console.WriteLine("Catalogue-driven allow/deny, marker, extra-locale and native-profile tests passed.");
 
     if (args.Length > 0)
     {

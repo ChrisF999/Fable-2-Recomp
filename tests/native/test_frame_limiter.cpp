@@ -8,7 +8,7 @@ int main() {
   using Clock = std::chrono::steady_clock;
   using namespace std::chrono_literals;
   rex::graphics::FrameLimiter limiter;
-  for (int rate : {30, 60}) {
+  for (int rate : {30, 60, 144}) {
     limiter.Pace(0);
     auto start = Clock::now();
     for (int i = 0; i < 7; ++i) limiter.Pace(rate);

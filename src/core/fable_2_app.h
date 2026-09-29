@@ -292,19 +292,14 @@ class Fable2App : public rex::ReXApp {
                   cvar);
     };
     const fable2::config::Values& cfg = fable2::config::Get();
-#ifdef FABLE2_DEFAULT_LANGUAGE
     // XLanguage profile default; config, environment and CLI still win.
-#ifdef FABLE2_GOTY_COMPATIBLE
     std::string profile_hash;
     if (fable2::xexverify::Sha256File(game_data_root() / "default.xex", profile_hash) &&
         fable2::xexverify::IsAcceptedHash(profile_hash)) {
-      seed_cvar("user_language", std::to_string(fable2::xexverify::DefaultLanguage(profile_hash)));
-      REXSYS_INFO("[build-profile] detected {} GOTY", profile_hash == fable2::xexverify::kGermanGotySha256 ? "German" : "USA/Europe");
+      const auto* version = fable2::versions::Find(profile_hash);
+      seed_cvar("user_language", std::to_string(version->language));
+      REXSYS_INFO("[build-profile] detected {}", version->name);
     }
-#else
-    seed_cvar("user_language", std::to_string(FABLE2_DEFAULT_LANGUAGE));
-#endif
-#endif
     seed_cvar("keyboard_gamepad_map", cfg.keyboard_gamepad_map);
     seed_cvar("mouse_look", cfg.mouse_look ? "true" : "false");
     seed_cvar("mouse_look_scale", std::to_string(cfg.mouse_look_scale));

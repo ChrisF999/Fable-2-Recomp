@@ -16,8 +16,8 @@ and the .NET 8 SDK on PATH. From the repository root:
 ```cmd
 build.cmd -release fable_2
 build.cmd launcher-self-contained
-tools\test_runtime_fixes.cmd
-dotnet run --project launcher/Fable2.Launcher.ConfigTests -c Release
+tests\run_native_tests.cmd
+dotnet run --project tests/Fable2.Launcher.ConfigTests -c Release
 ```
 
 Release builds prepare the pinned SDK, apply the patch, build D3D12 runtime
@@ -30,7 +30,13 @@ The unavailable upstream libmspack pin is replaced by its earlier public
 `305907723a4e7ab2018e58040059ffb5e77db837` revision. The Windows helper only
 materializes that revision's symlink blobs after validating their targets.
 
-Downloaded SDKs live under `out/tooling`, not inside the source submodule.
+`thirdparty/rexglue-sdk` remains the pinned source SDK and is still built for
+the runtime/renderer fixes. `out/tooling/rexglue-sdk-0.10.0` is only the official
+prebuilt codegen package, not a replacement source checkout. Keeping it outside
+the submodule avoids overwriting source/local edits: the previous download
+script could recursively delete that same directory before extraction. The
+staged native SDK also lives under `out/tooling`, keeping matched native
+headers/libraries separate from the codegen tool's own runtime dependencies.
 Put the published launcher beside the Release game EXE, `fable2_build.json`,
 `app-icon.png` and its matched DLLs. The previous experimental Vulkan build
 path is not the default for these fixes; do not replace this pair with DLLs
@@ -51,7 +57,7 @@ process for this test, select the game folder if necessary, then load a save
 and exercise gameplay. Relaunch normally to test real sound output.
 
 `frame_limit` is a host swap limiter: 0 disables it, with SDK range 0–240.
-The launcher offers 30, 60 and unlimited. Fable waits for two guest vblanks;
+The launcher offers 30, 60, 120, 144, 165, 240 and unlimited. Fable waits for two guest vblanks;
 the old 60-Hz guest pacing therefore held it at 30 even with a 60-FPS limit.
 `guest_vblank_pacing` keeps the old SDK behavior by default, but the launcher
 disables it for 60/unlimited independently of presentation VSync. The limiter

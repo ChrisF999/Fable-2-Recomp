@@ -1,5 +1,6 @@
 using System.IO;
 using System.Security.Cryptography;
+using Fable2Launcher.Constants;
 
 namespace Fable2Launcher;
 
@@ -7,43 +8,41 @@ public sealed record GameCompatibility(string Label, string Message, bool Suppor
 
 public static class GameCompatibilityInspector
 {
-    private const string GotyHash = "88c4ef2e18e65409444d1b068eff921d1f7e180a5ae64edc64ba6b0872372662";
-    private const string GermanHash = "cec9238ef5d7b391345a8897ef00a4673ae4f106f89385c81723ba5f9d0807b5";
-    private const string GermanGotyHash = "3f36e7870a06e04b3702760e93c61b1c7fded321b94021da6bfa120b424e6eb4";
-
     public static GameCompatibility Inspect(string directory)
     {
         string xex = Path.Combine(directory, "default.xex");
         if (!File.Exists(xex))
             return new("Content missing", "default.xex was not found in the selected game folder.", false);
-
-        string hash;
-        using (FileStream input = File.OpenRead(xex))
-            hash = Convert.ToHexString(SHA256.HashData(input)).ToLowerInvariant();
-
-        bool hasGotyMarkers = File.Exists(Path.Combine(directory, "data", "gold_version.txt")) &&
-                              File.Exists(Path.Combine(directory, "data", "startup.vfsconfig"));
-        bool hasGermanMarkers = File.Exists(Path.Combine(directory, "data", "tu1_data.bnk")) &&
-                                Directory.Exists(Path.Combine(directory, "data", "language", "de-de"));
-
-        bool hasGermanLocalization = File.Exists(Path.Combine(directory, "data", "language", "de-de", "text", "book.babel"));
-        return Classify(hash, hasGotyMarkers, hasGermanMarkers, hasGermanLocalization);
+        using FileStream input = File.OpenRead(xex);
+        string hash = Convert.ToHexString(SHA256.HashData(input)).ToLowerInvariant();
+        return Classify(hash,
+            path => File.Exists(Path.Combine(directory, path)),
+            path => Directory.Exists(Path.Combine(directory, path)));
     }
 
-    // Pure classification also permits synthetic tests without redistributing game assets.
-    public static GameCompatibility Classify(string hash, bool hasGotyMarkers,
-        bool hasGermanMarkers, bool hasGermanLocalization)
+    // Pure, catalogue-driven classification; tests supply marker predicates.
+    // Adding a validated locale does not require a new hash/locale if-branch.
+    public static GameCompatibility Classify(string hash, Func<string, bool> hasFile,
+        Func<string, bool> hasDirectory, IReadOnlyList<GameVersion>? versions = null)
     {
-        if (hash == GotyHash && hasGermanMarkers)
-            return new("Mixed files detected", "The supported GOTY XEX is paired with German retail/TU1 data. This combination is known to freeze during the intro.", false);
-        if (hash == GotyHash && hasGotyMarkers)
-            return new("GOTY USA/Europe detected", "Original GOTY USA/Europe executable and content detected.", true, "goty-us-eu");
-        if (hash == GermanGotyHash && hasGotyMarkers && hasGermanLocalization && !hasGermanMarkers)
-            return new("German GOTY detected", "Original German GOTY executable and localization detected.", true, "goty-german");
-        if (hash == GotyHash || hash == GermanGotyHash)
-            return new("Incomplete or mixed GOTY files", "Required GOTY content or German localization is missing, or retail/TU1 files are mixed in.", false);
-        if (hash == GermanHash)
-            return new("German build detected", "German retail/TU1 is catalogued but needs its own recompilation profile; this executable is not supported yet.", false);
+        foreach (GameVersion version in versions ?? GameVersions.All)
+        {
+            if (!string.Equals(hash, version.Hash, StringComparison.OrdinalIgnoreCase)) continue;
+            if (!version.Compatible)
+                return new(version.Name + " detected", version.Reason, false);
+            if (version.CodeGroup != GameVersions.CodeGroup)
+                return new(version.Name + " detected",
+                    "This executable's guest-code group is not compiled into this build.", false);
+            bool hasRejectionRule = version.RejectFiles.Length + version.RejectDirectories.Length > 0;
+            if (hasRejectionRule && version.RejectFiles.All(hasFile) &&
+                version.RejectDirectories.All(hasDirectory))
+                return new("Mixed files detected",
+                    "This XEX is paired with incompatible retail/TU1 content. Use a complete matching dump.", false);
+            if (!version.RequiredFiles.All(hasFile))
+                return new("Incomplete " + version.Name + " files",
+                    "Required content or localization is missing. Select a complete matching dump.", false);
+            return new(version.Name + " detected", version.Reason, true, version.Id);
+        }
         return new("Unknown XEX build", $"Unknown default.xex SHA-256: {hash}", false);
     }
 }

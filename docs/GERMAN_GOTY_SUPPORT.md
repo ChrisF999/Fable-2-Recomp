@@ -53,8 +53,8 @@ additional SDK patch and frame-pacing/audio tests; no allocator fix is claimed.
 Tests require no distributed game files:
 
 ```cmd
-dotnet run --project launcher/Fable2.Launcher.ConfigTests -c Release
-clang++ -std=c++23 -DFABLE2_GOTY_COMPATIBLE tools/test_xex_verify.cpp -o out/test_xex_verify.exe
+dotnet run --project tests/Fable2.Launcher.ConfigTests -c Release
+clang++ -std=c++23 -DFABLE2_GOTY_COMPATIBLE tests/native/test_xex_verify.cpp -o out/test_xex_verify.exe
 out\test_xex_verify.exe
 ```
 
