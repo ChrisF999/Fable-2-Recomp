@@ -425,7 +425,7 @@ build.cmd -release [t]  # build as Release (-O3) instead of Debug (-r is short f
 ```
 
 The first `build.cmd` run fetches the official SDK if needed under `out/tooling`.
-Release builds additionally build the pinned, patched SDK from source; see
+Both Debug and Release build the pinned, patched SDK from source; see
 [runtime build requirements](docs/RUNTIME_FIXES.md). Game content is required
 for code generation but is never published with this repository.
 
@@ -454,7 +454,7 @@ The build also accepts explicit overrides if you keep the SDK elsewhere:
   build.cmd -release fable_2
   ```
 
-  The release build stages the release runtime/GPU plugins (`rexruntime.dll`, `rexgpu-xenos.dll`) instead of the debug ones (`rexruntimed.dll`, `rexgpu-xenosd.dll`). **Debug builds are drastically slower at runtime** — the recompiled guest code, the runtime, and the Xenos GPU emulator all run at `-O0` with assertions enabled — so use Release for any performance-sensitive run. Omit the flag to build Debug again; the two build trees are independent and can coexist.
+  Both configurations build the patched source SDK, with separate SDK build/staging trees. Release stages `rexruntime.dll` and `rexgpu-xenos.dll`; Debug stages `rexruntimed.dll` and `rexgpu-xenosd.dll`. **Debug builds are drastically slower at runtime** — the recompiled guest code, the runtime, and the Xenos GPU emulator all run at `-O0` with assertions enabled — so use Release for any performance-sensitive run. Omit the flag to build Debug again; the two build trees are independent and can coexist. After updating, rerun `build.cmd` to refresh the SDK selection in an existing CMake cache.
 - Codegen runs as part of the build and re-runs automatically when `fable_2_manifest.toml` or `default.xex` change (tracked via the generated DEPFILE).
 - A full clean build recompiles ~291 generated translation units (60,462 guest functions).
 

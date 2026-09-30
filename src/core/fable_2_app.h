@@ -269,6 +269,9 @@ class Fable2App : public rex::ReXApp {
   // Plain settings are read via fable2::config::Get(); settings that back a
   // cvar are seeded into it below so the console/overlay keep working.
   void OnPostInitLogging() override {
+    // This describes the linked build, not a guarantee about DLLs replaced later.
+    REXSYS_INFO("[native-build] configuration={} linked_sdk={}",
+                FABLE2_NATIVE_CONFIGURATION, FABLE2_NATIVE_SDK);
     const std::filesystem::path exe_dir =
         rex::filesystem::GetExecutableFolder();
     fable2::config::Load(exe_dir / "fable2_config.toml");

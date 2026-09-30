@@ -41,7 +41,28 @@ if(FABLE2_CODEGEN_TOOL)
     # sources and libraries come from the matched source-built SDK instead.
     set_target_properties(rex::rexglue PROPERTIES
         IMPORTED_LOCATION "${FABLE2_CODEGEN_TOOL}"
+        IMPORTED_LOCATION_DEBUG "${FABLE2_CODEGEN_TOOL}"
+        IMPORTED_LOCATION_RELWITHDEBINFO "${FABLE2_CODEGEN_TOOL}"
         IMPORTED_LOCATION_RELEASE "${FABLE2_CODEGEN_TOOL}")
+    # A staged package still contains the official SDK's other configurations.
+    # Reject selecting those by accident via an old/manual CMake cache.
+    get_filename_component(FABLE2_PACKAGE_ROOT "${rexglue_DIR}/../../.." ABSOLUTE)
+    set(FABLE2_SDK_PROVENANCE "${FABLE2_PACKAGE_ROOT}/renderer-sdk-provenance.json")
+    if(WIN32 AND EXISTS "${FABLE2_SDK_PROVENANCE}")
+        file(READ "${FABLE2_SDK_PROVENANCE}" FABLE2_SDK_METADATA)
+        string(JSON FABLE2_STAGED_CONFIGURATION ERROR_VARIABLE FABLE2_METADATA_ERROR
+               GET "${FABLE2_SDK_METADATA}" configuration)
+        if(NOT FABLE2_METADATA_ERROR)
+            if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+                set(FABLE2_REQUIRED_CONFIGURATION "Debug")
+            else()
+                set(FABLE2_REQUIRED_CONFIGURATION "Release")
+            endif()
+            if(NOT FABLE2_STAGED_CONFIGURATION STREQUAL FABLE2_REQUIRED_CONFIGURATION)
+                message(FATAL_ERROR "Staged SDK is ${FABLE2_STAGED_CONFIGURATION}, but this host needs ${FABLE2_REQUIRED_CONFIGURATION}. Rerun build.cmd to select the matched SDK.")
+            endif()
+        endif()
+    endif()
 endif()
 
 # Sources
@@ -94,6 +115,8 @@ add_custom_command(TARGET fable_2 POST_BUILD
 # These are safe in this codebase; silence the deprecation on Windows.
 target_compile_definitions(fable_2 PRIVATE
     FABLE2_BUILD_PROFILE="${FABLE2_BUILD_PROFILE}"
+    FABLE2_NATIVE_CONFIGURATION="$<CONFIG>"
+    FABLE2_NATIVE_SDK="$<IF:$<BOOL:${FABLE2_CODEGEN_TOOL}>,source-built,external>"
     $<$<PLATFORM_ID:Windows>:_CRT_SECURE_NO_WARNINGS>)
 
 # Remote control server (AI input channel) is a debug-only tool: it opens a

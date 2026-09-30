@@ -23,17 +23,20 @@ def main():
     parser.add_argument("--skip-dependencies", action="store_true")
     args = parser.parse_args()
     source = args.source.resolve()
-    patch = Path(__file__).resolve().parents[1] / "thirdparty/rexglue-sdk-runtime-fixes.patch"
+    patch_directory = Path(__file__).resolve().parents[1] / "thirdparty"
     if git(source, "rev-parse", "HEAD").stdout.strip() != SDK_PIN:
         raise SystemExit(f"Expected SDK commit {SDK_PIN}; refusing to patch another revision.")
-    if git(source, "apply", "--reverse", "--check", str(patch), check=False).returncode == 0:
-        print("Runtime patch already applied.")
-    else:
+    # Keep follow-up fixes separate so existing patched SDK checkouts can upgrade.
+    for name in ("rexglue-sdk-runtime-fixes.patch", "rexglue-sdk-debug-exports.patch"):
+        patch = patch_directory / name
+        if git(source, "apply", "--reverse", "--check", str(patch), check=False).returncode == 0:
+            print(f"Already applied: {name}")
+            continue
         result = git(source, "apply", "--check", str(patch), check=False)
         if result.returncode:
-            raise SystemExit("SDK patch conflicts with local edits:\n" + result.stderr)
+            raise SystemExit(f"SDK patch {name} conflicts with local edits:\n" + result.stderr)
         git(source, "apply", str(patch))
-        print("Applied audio, frame pacing, FPS readout and Windows export fixes.")
+        print(f"Applied: {name}")
     if not args.skip_dependencies:
         # git submodule update reads the index, not the patched worktree gitlink.
         # The original SDK pin for libmspack is unavailable on its public remote.

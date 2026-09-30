@@ -1,0 +1,15 @@
+diff --git a/src/system/rexruntime.def b/src/system/rexruntime.def
+--- a/src/system/rexruntime.def
++++ b/src/system/rexruntime.def
+@@ -1,2 +1 @@
+-LIBRARY rexruntime
+ EXPORTS
+@@ -345,3 +344,8 @@
+ vmaDestroyAllocator
+ vmaDestroyImage
+ vmaGetAllocationInfo
++?IncrementCounter@perf@rex@@YAXW4CounterId@12@_J@Z
++?WriteCsvFrame@perf@rex@@YAXXZ
++?FlushCsv@perf@rex@@YAXXZ
++?GetFlagByName@cvar@rex@@YA?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@V?$basic_string_view@DU?$char_traits@D@std@@@4@@Z
++?GetRegistry@cvar@rex@@YAAEAV?$vector@UFlagEntry@cvar@rex@@V?$allocator@UFlagEntry@cvar@rex@@@std@@@std@@XZ

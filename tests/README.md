@@ -9,6 +9,8 @@ dotnet run --project tests/Fable2.Launcher.ConfigTests -c Release
 tests\run_native_tests.cmd
 ```
 
+Python tests also cover Debug/Release SDK staging with synthetic
+files, including failure when Debug DLLs or import libraries are missing.
 The native runner needs a VS x64 developer shell with Clang and the patched
 SDK source. An optional first argument selects that source tree. It checks
 audio pacing, host FPS limiting (including 144), FPS metering and the version

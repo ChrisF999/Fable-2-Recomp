@@ -131,24 +131,24 @@ if not exist "generated\rexglue.cmake" (
     "%REXSDK%\bin\rexglue.exe" codegen fable_2_manifest.toml || exit /b 1
 )
 
-rem Pinned source submodule, needed by the matched Release runtime build.
+rem Pinned source submodule, needed by every matched native runtime build.
 set "SDKSRC=%~dp0thirdparty\rexglue-sdk"
 if not exist "%SDKSRC%\CMakeLists.txt" (
     git submodule update --init thirdparty/rexglue-sdk || exit /b 1
 )
 
-rem Release uses the pinned, source-patched runtime with matched host headers.
-if /i not "%CONFIG%"=="win-amd64-debug" (
-    call "%~dp0tools\build_runtime_sdk.cmd" "%REXSDK%" || exit /b 1
-    set "CODEGENSDK=%REXSDK%"
-    set "REXSDK=%~dp0out\tooling\runtime-sdk\win-amd64"
+rem Debug must carry the same fixes as Release, with its own debug DLLs/libs.
+set "RUNTIMECONFIG=Release"
+set "RUNTIMEDIR=runtime-sdk"
+if /i "%CONFIG%"=="win-amd64-debug" (
+    set "RUNTIMECONFIG=Debug"
+    set "RUNTIMEDIR=runtime-sdk-debug"
 )
+call "%~dp0tools\build_runtime_sdk.cmd" "%REXSDK%" "%RUNTIMECONFIG%" || exit /b 1
+set "CODEGENSDK=%REXSDK%"
+set "REXSDK=%~dp0out\tooling\%RUNTIMEDIR%\win-amd64"
 
 rem (inline -D with quotes at the call site: cmd cannot carry a quoted value
 rem in a variable for paths with spaces)
-if defined CODEGENSDK (
-    cmake --preset %CONFIG% -DCMAKE_PREFIX_PATH="%REXSDK%" -Drexglue_DIR="%REXSDK%\lib\cmake\rexglue" -DREXGLUE_SDK_ROOT="%REXSDK%" -DREXGLUE_SDK_SOURCE="%SDKSRC%" -DFABLE2_CODEGEN_TOOL="%CODEGENSDK%\bin\rexglue.exe" || exit /b 1
-) else (
-    cmake --preset %CONFIG% -DCMAKE_PREFIX_PATH="%REXSDK%" -Drexglue_DIR="%REXSDK%\lib\cmake\rexglue" -DREXGLUE_SDK_ROOT="%REXSDK%" -DREXGLUE_SDK_SOURCE="%SDKSRC%" -DFABLE2_CODEGEN_TOOL= || exit /b 1
-)
+cmake --preset %CONFIG% -DCMAKE_PREFIX_PATH="%REXSDK%" -Drexglue_DIR="%REXSDK%\lib\cmake\rexglue" -DREXGLUE_SDK_ROOT="%REXSDK%" -DREXGLUE_SDK_SOURCE="%SDKSRC%" -DFABLE2_CODEGEN_TOOL="%CODEGENSDK%\bin\rexglue.exe" || exit /b 1
 cmake --build out\build\%CONFIG% --target %TARGET%
