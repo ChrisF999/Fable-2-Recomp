@@ -8,7 +8,7 @@ from pathlib import Path
 import subprocess
 import sys
 
-SDK_PIN = "1338ec1011739c7f00f8df9b9473e34d3dd9f2df"
+SDK_PIN = "babc769a94be5618010abfd075ed84f3c2bc09f5"
 MSPACK_PIN = "305907723a4e7ab2018e58040059ffb5e77db837"
 
 

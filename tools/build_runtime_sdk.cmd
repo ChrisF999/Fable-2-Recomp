@@ -7,6 +7,7 @@ set "ROOT=%~dp0.."
 set "SOURCE=%ROOT%\thirdparty\rexglue-sdk"
 set "BUILD=%ROOT%\out\build\runtime-sdk"
 set "STAGED=%ROOT%\out\tooling\runtime-sdk\win-amd64"
+set "OFFICIAL_ARG=%~1"
 set "OFFICIAL=%~1"
 set "CONFIGURATION=%~2"
 if not defined CONFIGURATION set "CONFIGURATION=Release"
@@ -23,6 +24,10 @@ if /i "%CONFIGURATION%"=="Debug" (
 if not defined OFFICIAL set "OFFICIAL=%ROOT%\out\tooling\rexglue-sdk-0.10.0\win-amd64"
 if not exist "%SOURCE%\CMakeLists.txt" (
   git -C "%ROOT%" submodule update --init thirdparty/rexglue-sdk || exit /b 1
+)
+rem Auto-fetch the official prebuilt SDK only when using the default location.
+if not defined OFFICIAL_ARG if not exist "%OFFICIAL%\bin\rexglue.exe" (
+  call "%~dp0setup_sdk.cmd" || exit /b 1
 )
 python "%~dp0prepare_runtime_sdk.py" "%SOURCE%" || exit /b 1
 cmake -S "%SOURCE%" -B "%BUILD%" -G Ninja ^
