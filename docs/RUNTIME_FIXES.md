@@ -1,7 +1,8 @@
 # Windows runtime fixes
 
 The tested source baseline is `himdo/rexglue-sdk` commit
-`1338ec1011739c7f00f8df9b9473e34d3dd9f2df` (upstream's dog rendering fix).
+`babc769a94be5618010abfd075ed84f3c2bc09f5` (the dog rendering fix plus the
+libmspack repin, whose sources are identical to `1338ec1`).
 `thirdparty/rexglue-sdk-runtime-fixes.patch` carries the additional audio,
 frame-pacing, Release FPS-counter and Windows export changes as source.
 No SDK fork, binary download of a patched runtime, game files or saves are
@@ -26,8 +27,9 @@ libraries and DLLs. The host is rebuilt against that staged SDK. The official
 0.10.0 codegen executable remains in a separate directory with its original
 runtime; mixing newer native DLLs into its directory is not supported.
 Patch conflicts and unexpected SDK revisions fail rather than overwrite edits.
-The unavailable upstream libmspack pin is replaced by its earlier public
-`305907723a4e7ab2018e58040059ffb5e77db837` revision. The Windows helper only
+The SDK's public libmspack pin is replaced by its earlier public
+`305907723a4e7ab2018e58040059ffb5e77db837` revision (reachable on the public
+remote). The Windows helper only
 materializes that revision's symlink blobs after validating their targets.
 
 `thirdparty/rexglue-sdk` remains the pinned source SDK and is still built for

@@ -1,7 +1,7 @@
-"""Reproducible Windows dependency fallback for the 1338ec1 renderer SDK.
+"""Reproducible Windows dependency fallback for the pinned renderer SDK.
 
-The SDK points at an unpublished libmspack commit. Use its previous public pin
-and materialize that dependency's symlink files on Windows. No game data is read.
+Use the dedicated public libmspack pin and materialize that dependency's
+symlink files on Windows. No game data is read.
 Run only against a dedicated SDK dependency checkout, not a libmspack worktree.
 """
 import argparse
