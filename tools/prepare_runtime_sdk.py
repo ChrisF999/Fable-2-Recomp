@@ -8,7 +8,7 @@ from pathlib import Path
 import subprocess
 import sys
 
-SDK_PIN = "babc769a94be5618010abfd075ed84f3c2bc09f5"
+SDK_PIN = "1338ec1011739c7f00f8df9b9473e34d3dd9f2df"
 MSPACK_PIN = "305907723a4e7ab2018e58040059ffb5e77db837"
 
 
@@ -36,8 +36,7 @@ def main():
         print("Applied audio, frame pacing, FPS readout and Windows export fixes.")
     if not args.skip_dependencies:
         # git submodule update reads the index, not the patched worktree gitlink.
-        # Keep the tested public libmspack pin; 3059077 is reachable on the
-        # public remote (ancestor of master), so fresh clones fetch it fine.
+        # The original SDK pin for libmspack is unavailable on its public remote.
         git(source, "update-index", "--cacheinfo", f"160000,{MSPACK_PIN},thirdparty/libmspack")
         subprocess.run(["git", "-C", str(source), "submodule", "update", "--init", "--recursive"], check=True)
         subprocess.run([sys.executable, str(Path(__file__).with_name("prepare_renderer_mspack.py")),
