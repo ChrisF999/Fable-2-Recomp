@@ -5,13 +5,65 @@
 cmake_minimum_required(VERSION 3.25)
 project(fable_2 LANGUAGES CXX)
 
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS constants/game_versions.json)
+execute_process(COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_game_versions.py --check
+    COMMAND_ERROR_IS_FATAL ANY)
+include(constants/game_versions.cmake)
+set(FABLE2_BUILD_PROFILE "${FABLE2_CATALOG_COMPATIBLE_PROFILE}" CACHE STRING "Verified guest XEX profile")
+set_property(CACHE FABLE2_BUILD_PROFILE PROPERTY STRINGS
+    "${FABLE2_CATALOG_COMPATIBLE_PROFILE}" ${FABLE2_CATALOG_PROFILES})
+if(FABLE2_BUILD_PROFILE STREQUAL FABLE2_CATALOG_COMPATIBLE_PROFILE)
+    set(FABLE2_SELECTED_PROFILES ${FABLE2_CATALOG_PROFILES})
+elseif(FABLE2_BUILD_PROFILE IN_LIST FABLE2_CATALOG_PROFILES)
+    set(FABLE2_SELECTED_PROFILES "${FABLE2_BUILD_PROFILE}")
+else()
+    message(FATAL_ERROR "Unverified FABLE2_BUILD_PROFILE: ${FABLE2_BUILD_PROFILE}")
+endif()
+
 set(CMAKE_CXX_STANDARD 23)
+list(JOIN FABLE2_SELECTED_PROFILES "\", \"" FABLE2_PROFILES_JSON)
+set(FABLE2_SUPPORTED_PROFILES "[\"${FABLE2_PROFILES_JSON}\"]")
+configure_file(config/fable2_build.json.in ${CMAKE_CURRENT_BINARY_DIR}/fable2_build.json @ONLY)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Needed by the recomp-level patch step below (tools/apply_recomp_patches.py).
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
 include(generated/rexglue.cmake)
+set(FABLE2_CODEGEN_TOOL "" CACHE FILEPATH "Standalone compatible ReXGlue codegen tool")
+if(FABLE2_CODEGEN_TOOL)
+    if(NOT EXISTS "${FABLE2_CODEGEN_TOOL}")
+        message(FATAL_ERROR "FABLE2_CODEGEN_TOOL does not exist")
+    endif()
+    # The official tool must keep its own runtime. Host headers, integration
+    # sources and libraries come from the matched source-built SDK instead.
+    set_target_properties(rex::rexglue PROPERTIES
+        IMPORTED_LOCATION "${FABLE2_CODEGEN_TOOL}"
+        IMPORTED_LOCATION_DEBUG "${FABLE2_CODEGEN_TOOL}"
+        IMPORTED_LOCATION_RELWITHDEBINFO "${FABLE2_CODEGEN_TOOL}"
+        IMPORTED_LOCATION_RELEASE "${FABLE2_CODEGEN_TOOL}")
+    # A staged package still contains the official SDK's other configurations.
+    # Reject selecting those by accident via an old/manual CMake cache.
+    get_filename_component(FABLE2_PACKAGE_ROOT "${rexglue_DIR}/../../.." ABSOLUTE)
+    set(FABLE2_SDK_PROVENANCE "${FABLE2_PACKAGE_ROOT}/renderer-sdk-provenance.json")
+    if(WIN32 AND EXISTS "${FABLE2_SDK_PROVENANCE}")
+        file(READ "${FABLE2_SDK_PROVENANCE}" FABLE2_SDK_METADATA)
+        string(JSON FABLE2_STAGED_CONFIGURATION ERROR_VARIABLE FABLE2_METADATA_ERROR
+               GET "${FABLE2_SDK_METADATA}" configuration)
+        if(NOT FABLE2_METADATA_ERROR)
+            if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+                set(FABLE2_REQUIRED_CONFIGURATION "Debug")
+            else()
+                set(FABLE2_REQUIRED_CONFIGURATION "Release")
+            endif()
+            if(NOT FABLE2_STAGED_CONFIGURATION STREQUAL FABLE2_REQUIRED_CONFIGURATION)
+                message(FATAL_ERROR "Staged SDK is ${FABLE2_STAGED_CONFIGURATION}, but this host needs ${FABLE2_REQUIRED_CONFIGURATION}. Rerun build.cmd to select the matched SDK.")
+            endif()
+        endif()
+    endif()
+endif()
 
 # Sources
 # Strong-symbol override copies of recompiled guest functions (perf-optimized;
@@ -50,12 +102,21 @@ endif()
 # per-configuration variant: rexgpu-xenosd.dll for Debug, rexgpu-xenos.dll
 # for Release). Without it the game runs with no GPU emulation.
 rexglue_setup_target(fable_2 GPU_PLUGINS xenos)
+add_custom_command(TARGET fable_2 POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_BINARY_DIR}/fable2_build.json"
+        "$<TARGET_FILE_DIR:fable_2>/fable2_build.json"
+    COMMENT "Staging supported game profiles for the launcher"
+    VERBATIM)
 
 # The app's probe/diagnostic headers (src/diagnostics/*.h) use the standard CRT
 # functions (fopen, getenv, strcat, strncat, ...), which the MSVC/UCRT headers
 # mark deprecated when compiled with clang (-Wdeprecated-declarations noise).
 # These are safe in this codebase; silence the deprecation on Windows.
 target_compile_definitions(fable_2 PRIVATE
+    FABLE2_BUILD_PROFILE="${FABLE2_BUILD_PROFILE}"
+    FABLE2_NATIVE_CONFIGURATION="$<CONFIG>"
+    FABLE2_NATIVE_SDK="$<IF:$<BOOL:${FABLE2_CODEGEN_TOOL}>,source-built,external>"
     $<$<PLATFORM_ID:Windows>:_CRT_SECURE_NO_WARNINGS>)
 
 # Remote control server (AI input channel) is a debug-only tool: it opens a
@@ -269,7 +330,17 @@ endif()
 # no resource compiler is configured (e.g. a bare MSVC-only preset).
 if(WIN32 AND CMAKE_RC_COMPILER AND TARGET fable_2)
     target_sources(fable_2 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tools/repro/fable2_version.rc)
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/app_icon.rc"
+         "1 ICON \"${CMAKE_CURRENT_SOURCE_DIR}/assets/app-icon.ico\"\n")
+    target_sources(fable_2 PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/app_icon.rc")
 endif()
+add_custom_command(TARGET fable_2 POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_SOURCE_DIR}/assets/app-icon.png"
+            "$<TARGET_FILE_DIR:fable_2>/app-icon.png"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/StartWithoutAudio.cmd"
+            "$<TARGET_FILE_DIR:fable_2>/StartWithoutAudio.cmd")
 
 # --- Vulkan renderer: Stage 2 (source-built plugin, swappable at launch) --
 # The prebuilt plugin above (GPU_PLUGINS xenos) is D3D12-only. The Vulkan
@@ -295,7 +366,8 @@ if(NOT DEFINED REXGLUE_SDK_SOURCE)
 endif()
 set(FABLE2_SDK_SRC "${REXGLUE_SDK_SOURCE}")
 set(FABLE2_SDK_ROOT "${REXGLUE_SDK_ROOT}")
-if(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Release")
+# Never replace a matched SDK with DLLs left over from an older Vulkan build.
+if(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT FABLE2_CODEGEN_TOOL)
     # The SDK stages its outputs under its own out/win-amd64/Release/ tree
     # (REXGLUE_ROOT based). We need both the source plugin AND the source
     # (both-backends) runtime: the prebuilt 0.10.0 runtime is D3D12-only and is

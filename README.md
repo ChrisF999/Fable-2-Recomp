@@ -4,6 +4,10 @@ First and for most this project was made to test the capabilities of local and o
 Recompilation of Fable 2 (Xbox 360, title ID 4D5307F1) using the [ReXGlue SDK](https://github.com/rexglue/rexglue-sdk) v0.10.0. Guest PPC code is statically recompiled to C++ at build time by `rexglue codegen`, driven by `fable_2_manifest.toml`.
 
 # Current and planned features
+
+Original GOTY USA/Europe and German GOTY dumps are supported by the default
+`goty-compatible` build profile. Other XEX revisions remain rejected. See
+[German GOTY validation and known limits](docs/GERMAN_GOTY_SUPPORT.md).
 [x] Can be used to beat the game\
 [x] Guild chest fully unlocked\
 [x] Uncapped framerate / increased framerate\
@@ -16,12 +20,31 @@ Recompilation of Fable 2 (Xbox 360, title ID 4D5307F1) using the [ReXGlue SDK](h
   - [ ] Automatic swapping between text
 
 [ ] Increased performance / framerate\
-[ ] Hero / Dog Texture bug fix\
+[x] Hero / Dog Texture bug fix (upstream renderer, verified on German GOTY)\
 [ ] Vulkan support\
 [ ] Linux Builds\
 [ ] Custom commands to aid in debugging\
 [ ] Improved Graphics rendering
 [ ] Custom menu(s) / modifying menus for extra functionality (like closing the game)
+
+## Windows launcher
+
+The optional WPF launcher detects the original game edition and configures
+output resolution, internal render scale, anisotropic filtering, FXAA, VSync,
+window/fullscreen mode and a 30/60/120/144/165/240/unlimited FPS limit. It keeps its preferences
+in `launcher-settings.toml` and writes `fable_2.toml`, preserving other settings
+and a one-time backup. Preferences survive the runtime rewriting its config.
+The game-folder selection starts empty and remembers only the user's saved
+location. Game files can live separately; the launcher uses `--game_data_root`.
+Both applications are named Fable 2 Recompiled and use new project-owned icons.
+
+Build with the .NET 8 SDK using `build.cmd launcher`, or
+`build.cmd launcher-self-contained` to bundle the desktop runtime. Place
+`out\tests\launcher-build\Fable2Launcher.exe` beside `fable_2.exe` and its generated
+`fable2_build.json`. See [launcher details](launcher/README.md).
+For the source-built audio fallback, working FPS limit and matched renderer,
+use `build.cmd -release fable_2`; see [build instructions, tests and known
+limits](docs/RUNTIME_FIXES.md). Remaster assets and save editing are not included.
 
 
 
@@ -389,9 +412,10 @@ hardcoded paths**. Prerequisites (all standard tools):
 - **Internet** on first build — `build.cmd` auto-downloads the prebuilt
   ReXGlue SDK v0.10.0 (~100 MB) from the
   [official release](https://github.com/rexglue/rexglue-sdk/releases/tag/v0.10.0)
-  into `thirdparty\rexglue-sdk\`. A pre-existing SDK is used instead if found:
-  `thirdparty\rexglue-sdk\win-amd64` first, then a sibling
-  `..\rexglue-sdk-0.10.0-win-amd64\win-amd64`.
+  into `out\tooling\rexglue-sdk-0.10.0\`. A compatible official SDK on PATH
+  is used instead if present. Downloads never replace the source submodule.
+- **Python and Git** for code generation and source-SDK preparation; **Visual
+  Studio Build Tools / Windows SDK** (x64 developer shell) for the native build.
 
 ```
 build.cmd               # configure + fable_2_codegen (runs rexglue codegen on the manifest)
@@ -400,8 +424,10 @@ build.cmd <target>      # any other CMake target
 build.cmd -release [t]  # build as Release (-O3) instead of Debug (-r is short form)
 ```
 
-The first `build.cmd` run fetches the SDK if needed, then configures and
-builds — that is all a fresh checkout requires (plus the game content above).
+The first `build.cmd` run fetches the official SDK if needed under `out/tooling`.
+Both Debug and Release build the pinned, patched SDK from source; see
+[runtime build requirements](docs/RUNTIME_FIXES.md). Game content is required
+for code generation but is never published with this repository.
 
 Manual/advanced setup (normally not needed):
 
@@ -428,7 +454,7 @@ The build also accepts explicit overrides if you keep the SDK elsewhere:
   build.cmd -release fable_2
   ```
 
-  The release build stages the release runtime/GPU plugins (`rexruntime.dll`, `rexgpu-xenos.dll`) instead of the debug ones (`rexruntimed.dll`, `rexgpu-xenosd.dll`). **Debug builds are drastically slower at runtime** — the recompiled guest code, the runtime, and the Xenos GPU emulator all run at `-O0` with assertions enabled — so use Release for any performance-sensitive run. Omit the flag to build Debug again; the two build trees are independent and can coexist.
+  Both configurations build the patched source SDK, with separate SDK build/staging trees. Release stages `rexruntime.dll` and `rexgpu-xenos.dll`; Debug stages `rexruntimed.dll` and `rexgpu-xenosd.dll`. **Debug builds are drastically slower at runtime** — the recompiled guest code, the runtime, and the Xenos GPU emulator all run at `-O0` with assertions enabled — so use Release for any performance-sensitive run. Omit the flag to build Debug again; the two build trees are independent and can coexist. After updating, rerun `build.cmd` to refresh the SDK selection in an existing CMake cache.
 - Codegen runs as part of the build and re-runs automatically when `fable_2_manifest.toml` or `default.xex` change (tracked via the generated DEPFILE).
 - A full clean build recompiles ~291 generated translation units (60,462 guest functions).
 
