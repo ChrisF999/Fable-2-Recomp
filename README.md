@@ -115,7 +115,10 @@ keeps working; the keyboard just adds buttons. It is wired up in
 The mapping is the `keyboard_gamepad_map` cvar, format `Key:Button,Key:Button,...`. Its default is no longer hardcoded in the binary: it comes from `[input] keyboard_gamepad_map` in `fable2_config.toml` (see User config above), which you can edit to remap permanently. The command line and the F3 console still override it per-launch / live.
 
 - **Key** — a host key name understood by `rex::ui::ParseVirtualKey`
-  (`E`, `Space`, `LeftShift`, `F1`, ...).
+  (`E`, `Space`, `LeftShift`, `F1`, ...), or a mouse button: `LMB` (left),
+  `RMB` (right), `MMB` (middle), and `XMB1`/`XMB2` (side buttons). Mouse
+  button names are case-insensitive; a held mouse button behaves exactly like
+  a held key.
 - **Button** — a guest gamepad input: `A`, `B`, `X`, `Y`, `LB`/`RB` (shoulders),
   `LT`/`RT` (triggers), `Up`/`Down`/`Left`/`Right` (dpad), `Pause` (Start),
   `Select` (Back), `L3`/`R3` (thumb clicks), and `StickUp`/`StickDown`/
