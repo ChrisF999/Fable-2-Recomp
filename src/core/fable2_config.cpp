@@ -112,8 +112,8 @@ hero_dog_texture_readback = true
 # was the single biggest cost in the 475 render chain; on multi-core hosts
 # the yield is only a politeness hint, so batch it. 1 = original (yield
 # every call); 0 = never yield; larger = fewer context switches.
-# Default: 8
-hotfunc_yield_every = 8
+# Default: 1
+hotfunc_yield_every = 1
 )TOML_EOF";
 
 std::string_view TypeName(toml::node_type t) {

@@ -74,3 +74,13 @@ unlock_ce = true
 # happens only for that resolve, not every frame. false = original black bug.
 # Default: true
 hero_dog_texture_readback = true
+
+[perf]
+# NtYieldExecution batching for the hot-function overrides (see
+# src/core/hotfunc/hotfunc_yield.h): every Nth guest yield does the real
+# SwitchToThread; the others take a full memory fence. The work-loop yield
+# was the single biggest cost in the 475 render chain; on multi-core hosts
+# the yield is only a politeness hint, so batch it. 1 = original (yield
+# every call); 0 = never yield; larger = fewer context switches.
+# Default: 1
+hotfunc_yield_every = 1

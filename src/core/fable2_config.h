@@ -68,7 +68,7 @@ struct Values {
   // the real SwitchToThread; the others take a full memory fence. 1 =
   // original (yield every call), 0 = never yield. Larger = fewer context
   // switches, less frequent CPU rotation to other guest threads.
-  int32_t hotfunc_yield_every = 8;
+  int32_t hotfunc_yield_every = 1;
 };
 
 // Load the config from `path`.
