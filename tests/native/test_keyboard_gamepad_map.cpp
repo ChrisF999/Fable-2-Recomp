@@ -29,6 +29,8 @@ void poll_f5();
 }
 
 #include "src/input/keyboard_gamepad.h"
+// The built-in default map (src/core/fable2_config.h) must parse fully too.
+#include "src/core/fable2_config.h"
 
 #include <cstdio>
 #include <optional>
@@ -138,6 +140,31 @@ int main() {
   }
   CHECK(ParseMap("").empty());
   CHECK(ParseMap(",,,").empty());
+
+  // 3b) The built-in default map (kDefaultKeyboardGamepadMap) parses fully
+  //     and lands every entry on the intended target.
+  auto def = ParseMap(fable2::config::kDefaultKeyboardGamepadMap);
+  CHECK(def.size() == 20);
+  CheckBinding(def, static_cast<uint16_t>(V::kLButton), B::X_INPUT_GAMEPAD_X);
+  CheckBinding(def, static_cast<uint16_t>(V::kRButton), B::X_INPUT_GAMEPAD_Y);
+  CheckBinding(def, static_cast<uint16_t>(V::kMButton), B::X_INPUT_GAMEPAD_B);
+  CheckBinding(def, static_cast<uint16_t>(V::kShift), B::X_INPUT_GAMEPAD_A);
+  CheckBinding(def, static_cast<uint16_t>(V::kE), B::X_INPUT_GAMEPAD_A);
+  CheckBinding(def, static_cast<uint16_t>(V::kB), B::X_INPUT_GAMEPAD_B);
+  CheckBinding(def, static_cast<uint16_t>(V::kQ), 0, 'L');
+  CheckBinding(def, static_cast<uint16_t>(V::kTab), B::X_INPUT_GAMEPAD_RIGHT_SHOULDER);
+  CheckBinding(def, static_cast<uint16_t>(V::kR), 0, 'R');
+  CheckBinding(def, static_cast<uint16_t>(V::kZ), B::X_INPUT_GAMEPAD_LEFT_SHOULDER);
+  CheckBinding(def, static_cast<uint16_t>(V::kW), 0, 0, 2, 1);
+  CheckBinding(def, static_cast<uint16_t>(V::kS), 0, 0, 2, -1);
+  CheckBinding(def, static_cast<uint16_t>(V::kA), 0, 0, 1, -1);
+  CheckBinding(def, static_cast<uint16_t>(V::kD), 0, 0, 1, 1);
+  CheckBinding(def, static_cast<uint16_t>(V::kEscape), B::X_INPUT_GAMEPAD_START);
+  CheckBinding(def, static_cast<uint16_t>(V::kM), B::X_INPUT_GAMEPAD_BACK);
+  CheckBinding(def, static_cast<uint16_t>(V::kUp), B::X_INPUT_GAMEPAD_DPAD_UP);
+  CheckBinding(def, static_cast<uint16_t>(V::kDown), B::X_INPUT_GAMEPAD_DPAD_DOWN);
+  CheckBinding(def, static_cast<uint16_t>(V::kLeft), B::X_INPUT_GAMEPAD_DPAD_LEFT);
+  CheckBinding(def, static_cast<uint16_t>(V::kRight), B::X_INPUT_GAMEPAD_DPAD_RIGHT);
 
   // 4) Guest-target aliases still resolve.
   M m;

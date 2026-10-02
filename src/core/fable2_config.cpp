@@ -65,9 +65,10 @@ config_version = 1
 # --keyboard_gamepad_map, REX_* environment variables and fable_2.toml still
 # take priority over this value; the F3 console can change it live.
 # Default: the built-in layout
-#   E:A,2:B,1:X,3:Y,W:StickUp,S:StickDown,A:StickLeft,D:StickRight,
-#   Escape:Pause,M:Select,Q:LT,Tab:RT,F1:Up,F2:Down,F3:Left,F4:Right
-keyboard_gamepad_map = "E:A,2:B,1:X,3:Y,W:StickUp,S:StickDown,A:StickLeft,D:StickRight,Escape:Pause,M:Select,Q:LT,Tab:RT,F1:Up,F2:Down,F3:Left,F4:Right"
+#   LMB:X,RMB:Y,MMB:B,Shift:A,E:A,Q:LT,Tab:RB,R:RT,Z:LB,B:B,
+#   W:StickUp,S:StickDown,A:StickLeft,D:StickRight,Escape:Pause,M:Select,
+#   Up:Up,Down:Down,Left:Left,Right:Right
+keyboard_gamepad_map = "LMB:X,RMB:Y,MMB:B,Shift:A,E:A,Q:LT,Tab:RB,R:RT,Z:LB,B:B,W:StickUp,S:StickDown,A:StickLeft,D:StickRight,Escape:Pause,M:Select,Up:Up,Down:Down,Left:Left,Right:Right"
 
 # Map mouse movement to the guest right stick (camera look): sweep to look,
 # stop to stop. false disables mouse look entirely.

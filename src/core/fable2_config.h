@@ -19,10 +19,11 @@ namespace fable2::config {
 // keyboard_gamepad_map cvar itself defaults to empty and is seeded from
 // here at startup (see Fable2App::OnPostInitLogging).
 inline constexpr std::string_view kDefaultKeyboardGamepadMap =
-    "E:A,2:B,1:X,3:Y,"
+    "LMB:X,RMB:Y,MMB:B,Shift:A,E:A,"
+    "Q:LT,Tab:RB,R:RT,Z:LB,B:B,"
     "W:StickUp,S:StickDown,A:StickLeft,D:StickRight,"
-    "Escape:Pause,M:Select,Q:LT,Tab:RT,"
-    "F1:Up,F2:Down,F3:Left,F4:Right";
+    "Escape:Pause,M:Select,"
+    "Up:Up,Down:Down,Left:Left,Right:Right";
 
 // Parsed values from fable2_config.toml. To add a setting:
 //   1. Add a member here with its built-in default.

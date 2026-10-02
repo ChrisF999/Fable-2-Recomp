@@ -131,16 +131,21 @@ The mapping is the `keyboard_gamepad_map` cvar, format `Key:Button,Key:Button,..
   `Select` (Back), `L3`/`R3` (thumb clicks), and `StickUp`/`StickDown`/
   `StickLeft`/`StickRight` (left thumbstick, full deflection while held).
 
-The default layout is:
+The default layout (mouse buttons plus keyboard) is:
 
 | Key(s) | Guest input |
 |---|---|
-| `E` / `2` / `1` / `3` | `A` / `B` / `X` / `Y` |
+| `LMB` | `X` |
+| `RMB` | `Y` |
+| `MMB` / `B` | `B` |
+| `Shift` / `E` | `A` |
 | `W` `A` `S` `D` | Left stick (up / left / down / right) |
+| `Q` / `R` | Left / Right trigger |
+| `Z` / `Tab` | Left / Right shoulder |
+| Arrow keys | Dpad up / down / left / right |
 | `Escape` | Pause (Start) |
 | `M` | Select (Back) |
-| `Q` / `Tab` | Left / Right trigger |
-| `F1` `F2` `F3` `F4` | Dpad up / down / left / right |
+
 
 Remap at launch without recompiling, e.g.
 

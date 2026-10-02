@@ -98,8 +98,9 @@ class Fable2App : public rex::ReXApp {
     // LoadGpuPlugin("xenos") -> the prebuilt D3D12 plugin.
 
     // Build on top of the default input system (SDL gamepad + NOP) and add a
-    // synthetic "keyboard gamepad" driver so host keys can drive the guest.
-    // The mapping is the `keyboard_gamepad_map` cvar (default "E:A"). See
+    // synthetic "keyboard gamepad" driver so host keys/mouse buttons can drive
+    // the guest. The mapping is the `keyboard_gamepad_map` cvar (default from
+    // fable2_config.toml [input], see fable2_config.h). See
     // src/input/keyboard_gamepad.h.
     config.input_factory = [this](bool tool_mode) ->
         std::unique_ptr<rex::system::IInputSystem> {
