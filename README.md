@@ -12,7 +12,7 @@ Original GOTY USA/Europe and German GOTY dumps are supported by the default
 [x] Guild chest fully unlocked\
 [x] Uncapped framerate / increased framerate\
 [ ] Higher Resolution support\
-[ ] Built in Debug Menu
+[x] Built in Debug Menu
   - [x] Enabling custom lua to run in game
 
 [x] Keyboard / Mouse Support\
@@ -23,9 +23,15 @@ Original GOTY USA/Europe and German GOTY dumps are supported by the default
 [x] Hero / Dog Texture bug fix (upstream renderer, verified on German GOTY)\
 [ ] Vulkan support\
 [ ] Linux Builds\
-[ ] Custom commands to aid in debugging\
-[ ] Improved Graphics rendering
-[ ] Custom menu(s) / modifying menus for extra functionality (like closing the game)
+[x] Custom commands to aid in debugging\
+[ ] Improved Graphics rendering\
+[ ] Custom menu(s) / modifying menus for extra functionality (like closing the game)\
+[x] Supporting other languages
+  - [x] Germany
+  - [x] France
+  - [x] Italy
+  - [x] Russia
+  - [x] Spain
 
 ## Windows launcher
 
@@ -53,6 +59,7 @@ limits](docs/RUNTIME_FIXES.md). Remaster assets and save editing are not include
 - **You must supply the game content yourself** (it is not in the repo): rip the Fable 2 GOTY (USA/EU) disc (the one with SHA-256 above) and put `default.xex`, `data/`, `nxeart/`, and `$SystemUpdate/` in the project root. The build does not copy this into the build directories   
 - **Saves live in `<build dir>\saves\`** — back that folder up to keep your progress, and copy it between build trees (Debug/Release) or machines to carry a save over.
 - The `--game_data_root <path>` override still points the content root at a different tree (e.g. to run from a shared content copy without staging); saves/cache still land next to the exe.
+- Although this was made for the US / Europe GOTY version I have been able to run the following regions: Germany, France, Italy, Russia, and Spain. Your milage may very if you use those regions.
 
 
 ## Running
