@@ -55,8 +55,8 @@ limits](docs/RUNTIME_FIXES.md). Remaster assets and save editing are not include
 
 
 # Notes for running the game
-- **How to extract:** rip the disc to an ISO, then open it with **[XboxImageExtractor](https://github.com/dromex1/XboxImageExtractor)** — a GUI tool for Xbox 360 game images. It lists the image's filesystem; select `default.xex`, `data`, and `$SystemUpdate` and extract them into the project root (`data` and `$SystemUpdate` extract as folders). You can also grab `nxeart` and anything else the tool lists.
-- **You must supply the game content yourself** (it is not in the repo): rip the Fable 2 GOTY (USA/EU) disc (the one with SHA-256 above) and put `default.xex`, `data/`, `nxeart/`, and `$SystemUpdate/` in the project root. The build does not copy this into the build directories   
+- **How to extract:** rip the disc to an ISO, then open it with **[XboxImageExtractor](https://github.com/dromex1/XboxImageExtractor)** — a GUI tool for Xbox 360 game images. It lists the image's filesystem; select `default.xex` and `data` and extract them into the project root (`data` extract as folders).
+- **You must supply the game content yourself** (it is not in the repo): rip the Fable 2 GOTY (USA/EU) disc (the one with SHA-256 above) and put `default.xex` and `data/` in the project root. The build does not copy this into the build directories   
 - **Saves live in `<build dir>\saves\`** — back that folder up to keep your progress, and copy it between build trees (Debug/Release) or machines to carry a save over.
 - The `--game_data_root <path>` override still points the content root at a different tree (e.g. to run from a shared content copy without staging); saves/cache still land next to the exe.
 - Although this was made for the US / Europe GOTY version I have been able to run the following regions: Germany, France, Italy, Russia, and Spain. Your milage may very if you use those regions.
